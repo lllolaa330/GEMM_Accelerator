@@ -1,0 +1,28 @@
+# Vivado 临时文件和日志
+*.log
+*.jou
+*.pb
+*.str
+*.jou
+.Xil/
+vivado*.str
+vivado*.ini
+
+# 编译结果（非常大，不建议上传）
+*.runs/
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.gen/
+
+# 导出文件
+*.sdk/
+*.prm
+*.dtb
+*.bit
+*.bin
+*.mcs
+
+# 操作系统文件
+.DS_Store
