@@ -17,7 +17,7 @@ module tb_SlidingWindow_CU;
     localparam BATCH_SIZE        = M * 4;
     localparam OFFSET_ADDR_WIDTH = $clog2(BATCH_NUMS);
     localparam OUTPUT_ADDR_WIDTH = $clog2(M);
-    localparam NUM_FILES         = 1; 
+    localparam NUM_FILES         = 100; 
 
     // =========================================================================
     // 2. 信号定义
@@ -251,8 +251,8 @@ module tb_SlidingWindow_CU;
     // =========================================================================
     SlidingWindow_CU #(
         .M(M), .N(N), .T_WIDTH(T_WIDTH),
-        .A_PACKED_WIDTH(A_PACKED_WIDTH), .B_DATA_BITS(B_DATA_BITS),
-        .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH), .WINDOW_SIZE(WINDOW_SIZE)
+        .A_PACKED_WIDTH(A_PACKED_WIDTH), .WINDOW_SIZE(WINDOW_SIZE),
+        .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH)
     ) dut (
         .clk(clk), .rst_n(rst_n),
         .cfg_we_b(cfg_we_b), .cfg_addr_b(cfg_addr_b), .cfg_data_b(cfg_data_b),

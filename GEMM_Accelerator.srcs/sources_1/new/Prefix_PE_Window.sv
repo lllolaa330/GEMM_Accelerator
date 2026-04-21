@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
 module Prefix_PE_Window #(
-    parameter T = 8,
-    parameter D_W = 8,
+    parameter T      = 8,
+    parameter D_W    = 8,
     parameter PSUM_W = 24 
 )(
     input  wire [T*D_W-1:0]          vec_b_slice, 
@@ -12,10 +12,16 @@ module Prefix_PE_Window #(
     output wire signed[PSUM_W-1:0]   result_out      
 );
 
+    // =========================================================================
+    // 内部信号声明置顶
+    // =========================================================================
     reg signed [PSUM_W-1:0] sum;
     reg signed [D_W-1:0]    temp_b;
     integer i;
 
+    // =========================================================================
+    // 纯组合逻辑加法树实现
+    // =========================================================================
     always @(*) begin
         sum = prefix_in;
         for (i = 0; i < T; i = i + 1) begin
@@ -33,4 +39,5 @@ module Prefix_PE_Window #(
     end
 
     assign result_out = sum;
+
 endmodule
