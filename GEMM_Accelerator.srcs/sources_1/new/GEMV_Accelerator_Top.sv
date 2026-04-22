@@ -12,8 +12,7 @@ module GEMV_Accelerator_Top #(
     parameter BATCH_NUMS     = N / T_WIDTH,
     parameter BATCH_SIZE     = M * 4,
     parameter A_PACKED_WIDTH = 10 + T_WIDTH,
-    parameter WIDE_BUS_WIDTH = CU_NUMS * A_PACKED_WIDTH,
-    parameter OUT_WIDE_WIDTH = CU_NUMS * OUT_WIDTH
+    parameter WIDE_BUS_WIDTH = CU_NUMS * A_PACKED_WIDTH
 )(
     input  wire                               clk,
     input  wire                               rst_n,
@@ -37,7 +36,7 @@ module GEMV_Accelerator_Top #(
     // --- 结果读取接口 ---
     input  wire                               out_rd_en,
     input  wire [$clog2(M)-1:0]               out_rd_addr,
-    output wire [OUT_WIDE_WIDTH-1:0]          out_data_wide
+    output wire [OUT_WIDTH-1:0]               out_data
 );
 
     // =========================================================================
@@ -105,7 +104,7 @@ module GEMV_Accelerator_Top #(
         .start_compute(ctrl_start_compute), .current_k_offset(ctrl_compute_batch_idx),
         .all_batch_done(compute_all_batch_done), .all_matrix_done(compute_all_matrix_done),
         
-        .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data_wide)
+        .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
     );
 
 endmodule
