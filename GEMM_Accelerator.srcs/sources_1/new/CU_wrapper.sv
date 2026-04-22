@@ -4,7 +4,7 @@ module CU_Wrapper #(
     parameter M                 = 64,
     parameter N                 = 64,
     parameter T_WIDTH           = 8,
-    parameter A_PACKED_WIDTH    = 10 + T_WIDTH, // 18
+    parameter A_PACKED_WIDTH    = 10 + T_WIDTH,
     parameter B_DATA_BITS       = 8,
     parameter PSUM_WIDTH        = 24,
     parameter OUT_WIDTH         = 32,
@@ -16,7 +16,7 @@ module CU_Wrapper #(
     input  wire                                 clk,
     input  wire                                 rst_n,
 
-    // --- 顶层/DMA 控制接口 ---
+    // --- 顶层/DMA 控制接口 (runtime 权重注入) ---
     input  wire                                 ping_pong_sel,    // 0/1 切换状态
     input  wire                                 dma_wr_en,
     input  wire [$clog2(BATCH_SIZE)-1:0]        dma_wr_addr,
@@ -24,9 +24,9 @@ module CU_Wrapper #(
 
     // --- 运算控制接口 ---
     input  wire                                 start_compute,    // 单脉冲：启动当前 Batch 的计算
-    input  wire [OFFSET_ADDR_WIDTH-1:0]         current_k_offset, // 当前是第几个 Batch (传给底层CU)
+    input  wire [OFFSET_ADDR_WIDTH-1:0]         current_k_offset, // 当前是第几个 Batch (传给底层CU，用于内部选择对应的b数据)
     
-    // --- Vector B 配置接口 (共享自外部) ---
+    // --- Vector B 配置接口 ---
     input  wire                                 cfg_we_b,
     input  wire [7:0]                           cfg_addr_b,
     input  wire [7:0]                           cfg_data_b, 

@@ -95,11 +95,10 @@ module SlidingWindow_CU #(
     // --- Batch Done 计算逻辑 ---
     (* dont_touch = "true" *) reg [$clog2(BATCH_SIZE+1)-1:0] s3_batch_cnt;
     reg [7:0] batch_done_shift;
-    wire batch_is_all_processed;
+
     // --- Matrix Done 计算逻辑 ---
     (* dont_touch = "true" *) reg [$clog2(TOTAL_PAYLOADS+1)-1:0] s3_matrix_cnt;
     reg [7:0] matrix_done_shift;
-    wire matrix_is_all_processed;
 
     // =========================================================================
     // Stage 1: Window Buffer

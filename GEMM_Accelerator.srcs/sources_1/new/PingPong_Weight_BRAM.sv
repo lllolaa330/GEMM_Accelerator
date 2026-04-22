@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
 module PingPong_Weight_BRAM #(
-    parameter DATA_WIDTH     = 18,     // A_PACKED_WIDTH (10 bit节点 + 8 bit T)
-    parameter DEPTH_PER_BANK = 1024    // 单个 Batch 的深度 (BATCH_SIZE)
+    parameter DATA_WIDTH     = 18,     // A_PACKED_WIDTH, node:[17:10] row_idx:[9:2] bitplane_id:[1:0] 
+    parameter DEPTH_PER_BANK = 1024    // BATCH_SIZE, 单个 Batch 的深度 
 )(
     input  wire                      clk,
     input  wire                      rst_n,
@@ -13,15 +13,15 @@ module PingPong_Weight_BRAM #(
     input  wire                      ping_pong_sel, 
 
     // --- Port A: DMA 写入接口 (Global -> BRAM) ---
-    input  wire                      dma_wr_en,
+    input  wire                              dma_wr_en,
     input  wire [$clog2(DEPTH_PER_BANK)-1:0] dma_wr_addr,
-    input  wire [DATA_WIDTH-1:0]     dma_wr_data,
+    input  wire [DATA_WIDTH-1:0]             dma_wr_data,
 
     // --- Port B: CU 读取接口 (BRAM -> CU) ---
-    input  wire                      cu_rd_en,
+    input  wire                              cu_rd_en,
     input  wire [$clog2(DEPTH_PER_BANK)-1:0] cu_rd_addr,
-    output wire [DATA_WIDTH-1:0]     cu_rd_data
-);
+    output wire [DATA_WIDTH-1:0]             cu_rd_data
+);  
 
     // =========================================================================
     // 参数与内部信号声明
@@ -43,7 +43,7 @@ module PingPong_Weight_BRAM #(
     // CU 读端：当 sel=0 时读 Bank1，当 sel=1 时读 Bank0 (严格互补)
     assign physical_rd_addr = {~ping_pong_sel, cu_rd_addr};
 
-    // --- 例化 Xilinx 真正的双端口 RAM ---
+    // --- 例化 Xilinx 的双端口 RAM ---
     xpm_memory_tdpram #(
         .ADDR_WIDTH_A       (ADDR_W + 1),       // 总深度 2048 -> 地址宽 11
         .ADDR_WIDTH_B       (ADDR_W + 1),
