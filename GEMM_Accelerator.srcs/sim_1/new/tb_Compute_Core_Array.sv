@@ -80,7 +80,7 @@ module tb_Compute_Core_Array;
         end
     endtask
 
-    // 加载并写入 11008 个数据到广播 Buffer
+    // 加载并写入激活数据到广播 Buffer
     task config_and_broadcast_b();
         string b_path;
         begin
@@ -88,7 +88,7 @@ module tb_Compute_Core_Array;
             b_path = $sformatf("%s/b.txt", base_dir);
             $readmemh(b_path, mem_b);
             
-            // 顺序写入广播 Buffer，内部会自动路由到43个子内存
+            // 顺序写入广播 Buffer，内部会自动路由到各个CU的子内存
             for (i = 0; i < B_VEC_LEN; i = i + 1) begin
                 @(negedge clk);
                 host_we_act   = 1; 
@@ -115,7 +115,7 @@ module tb_Compute_Core_Array;
         string a_path;
         begin
             for (cu = 0; cu < CU_NUMS; cu = cu + 1) begin
-                a_path = $sformatf("%s/a/a_%04d.txt", base_dir, cu + 1);
+                a_path = $sformatf("%s/a/a_%04d.txt", base_dir, cu);
                 $readmemh(a_path, temp_mem);
                 for (j = 0; j < BATCH_SIZE * BATCH_NUMS; j = j + 1) begin
                     mem_a[cu][j] = temp_mem[j];

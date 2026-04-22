@@ -49,7 +49,7 @@ module tb_SlidingWindow_CU;
     real    total_overall_density_with_ape = 0.0;
     time    start_time, end_time, global_time_accum = 0;
     
-    string  base_dir = "/media/ese/HDD-Data/vivado_projects/0409data_llama3";
+    string  base_dir = "C:/Users/lllolaa/Desktop/0409data_llama3";
 
     // =========================================================================
     // 3. 时钟与监控逻辑 (Monitoring)
