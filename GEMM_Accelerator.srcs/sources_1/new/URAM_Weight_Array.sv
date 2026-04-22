@@ -1,18 +1,26 @@
 `timescale 1ns / 1ps
 
 module URAM_Weight_Array #(
-    parameter DATA_WIDTH = 774,
-    parameter DEPTH      = 32768   // BATCH_SIZE * BATCH_NUMS (e.g., 1024 * 32)
+    parameter M = 256,
+    parameter N = 256,
+    parameter B_VEC_LEN = 4096,
+    parameter T_WIDTH = 8,
+    parameter A_PACKED_WIDTH = 10 + T_WIDTH,
+    parameter CU_NUMS    = B_VEC_LEN / N,
+    parameter DATA_WIDTH = A_PACKED_WIDTH * CU_NUMS, // 所有CU的权重展平，宽总线 
+    parameter BATCH_SIZE = M *4,
+    parameter BATCH_NUMS = N / T_WIDTH,
+    parameter DEPTH      = BATCH_SIZE * BATCH_NUMS   // URAM 存放 CU 所需的完整权重
 )(
     input  wire                      clk,
     input  wire                      rst_n,
 
-    // --- Port A: 主机写入接口 (Host -> URAM) ---
+    // --- Port A: 主机写入 weight 接口 (Host -> URAM) ---
     input  wire                      host_we,
     input  wire [$clog2(DEPTH)-1:0]  host_addr,
     input  wire [DATA_WIDTH-1:0]     host_data,
 
-    // --- Port B: DMA 读取接口 (URAM -> Pipeline -> BRAM) ---
+    // --- Port B: DMA 读取 weight 接口 (URAM -> Pipeline -> BRAM) ---
     input  wire                      dma_rd_en,
     input  wire [$clog2(DEPTH)-1:0]  dma_rd_addr,
     output wire [DATA_WIDTH-1:0]     dma_rd_data

@@ -1,7 +1,9 @@
 `timescale 1ns / 1ps
 
 module Global_Controller #(
-    parameter BATCH_NUMS = 32
+      parameter N = 256,
+      parameter T_WIDTH = 8,
+      parameter BATCH_NUMS = N / T_WIDTH
 )(
     input  wire                               clk,
     input  wire                               rst_n,
@@ -31,7 +33,7 @@ module Global_Controller #(
         SYNC_RUN    = 4'd3, 
         WAIT_SYNC   = 4'd4,
         DRAIN       = 4'd5, 
-        ACCUM       = 4'd6, // --- 新增：触发 Array Accumulator
+        ACCUM       = 4'd6, 
         WAIT_ACCUM  = 4'd7,
         DONE        = 4'd8;
 
@@ -80,7 +82,7 @@ module Global_Controller #(
                     ping_pong_sel <= ~ping_pong_sel; 
                 end
                 WAIT_SYNC:  if (dma_done && all_batch_done) batch_cnt <= batch_cnt + 1;
-                ACCUM:      start_accum <= 1;  // 触发累加树
+                ACCUM:      start_accum <= 1; 
                 DONE:       system_done <= 1;
             endcase
         end

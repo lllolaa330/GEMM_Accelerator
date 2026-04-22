@@ -1,15 +1,18 @@
 `timescale 1ns / 1ps
 
 module GEMV_Accelerator_Top #(
-    parameter CU_NUMS        = 43,
-    parameter M              = 256,
-    parameter N              = 256,
-    parameter T_WIDTH        = 8,
+    parameter M                 = 256,
+    parameter N                 = 256,
+    parameter B_VEC_LEN         = 4096,
+    parameter T_WIDTH           = 8,
+    parameter OUT_WIDTH         = 32,
+    parameter PIPE_STAGES       = 2,
+
+    parameter CU_NUMS        = B_VEC_LEN / N,   
     parameter BATCH_NUMS     = N / T_WIDTH,
     parameter BATCH_SIZE     = M * 4,
-    parameter A_PACKED_WIDTH = 18,
+    parameter A_PACKED_WIDTH = 10 + T_WIDTH,
     parameter WIDE_BUS_WIDTH = CU_NUMS * A_PACKED_WIDTH,
-    parameter OUT_WIDTH      = 32,
     parameter OUT_WIDE_WIDTH = CU_NUMS * OUT_WIDTH
 )(
     input  wire                               clk,
@@ -61,7 +64,7 @@ module GEMV_Accelerator_Top #(
     // 1. 全局控制器 (大脑)
     // =========================================================================
     Global_Controller #(
-        .BATCH_NUMS(BATCH_NUMS)
+        .N(N), .T_WIDTH(T_WIDTH)
     ) u_controller (
         .clk(clk), .rst_n(rst_n),
         .start_system(host_start), .system_done(system_done),
@@ -75,7 +78,8 @@ module GEMV_Accelerator_Top #(
     // 2. 存储子系统 (仓库与搬运)
     // =========================================================================
     Memory_Subsystem #(
-        .DATA_WIDTH(WIDE_BUS_WIDTH), .BATCH_SIZE(BATCH_SIZE), .BATCH_NUMS(BATCH_NUMS), .PIPE_STAGES(2)
+        .M(M), .N(N), .B_VEC_LEN(B_VEC_LEN), .T_WIDTH(T_WIDTH),
+        .PIPE_STAGES(PIPE_STAGES)
     ) u_memory (
         .clk(clk), .rst_n(rst_n),
         .start_dma(ctrl_start_dma), .batch_idx(ctrl_dma_batch_idx), .dma_done(mem_dma_done),
@@ -87,8 +91,8 @@ module GEMV_Accelerator_Top #(
     // 3. 计算阵列核心 (Data Plane)
     // =========================================================================
     Compute_Core_Array #(
-        .CU_NUMS(CU_NUMS), .M(M), .N(N), .T_WIDTH(T_WIDTH), 
-        .BATCH_SIZE(BATCH_SIZE), .BATCH_NUMS(BATCH_NUMS)
+        .T_WIDTH(T_WIDTH), .M(M), .N(N), 
+        .B_VEC_LEN(B_VEC_LEN), .OUT_WIDTH(OUT_WIDTH)
     ) u_compute_array (
         .clk(clk), .rst_n(rst_n),
         

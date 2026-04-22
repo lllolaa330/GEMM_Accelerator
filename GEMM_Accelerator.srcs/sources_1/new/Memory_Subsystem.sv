@@ -1,9 +1,16 @@
 `timescale 1ns / 1ps
 
 module Memory_Subsystem #(
-    parameter DATA_WIDTH  = 774,
-    parameter BATCH_SIZE  = 1024,
-    parameter BATCH_NUMS  = 32,
+    parameter M = 256,
+    parameter N = 256,
+    parameter B_VEC_LEN = 4096,
+    parameter T_WIDTH = 8,
+    parameter A_PACKED_WIDTH = 10 + T_WIDTH,
+    parameter CU_NUMS    = B_VEC_LEN / N,
+    parameter DATA_WIDTH = A_PACKED_WIDTH * CU_NUMS, // 所有CU的权重展平，宽总线 
+    parameter BATCH_SIZE = M *4,
+    parameter BATCH_NUMS = N / T_WIDTH,
+    parameter DEPTH      = BATCH_SIZE * BATCH_NUMS,   // URAM 存放 CU 所需的完整权重
     parameter PIPE_STAGES = 2
 )(
     input  wire                               clk,
@@ -32,7 +39,7 @@ module Memory_Subsystem #(
 
     // 1. DMA 引擎
     Data_DMA_Engine #(
-        .BATCH_SIZE(BATCH_SIZE), .BATCH_NUMS(BATCH_NUMS),
+        .M(M), .N(N), .T_WIDTH(T_WIDTH), 
         .RAM_LATENCY(1), .PIPE_STAGES(PIPE_STAGES)
     ) u_dma (
         .clk(clk), .rst_n(rst_n),
@@ -43,7 +50,7 @@ module Memory_Subsystem #(
 
     // 2. 核心大容量 URAM
     URAM_Weight_Array #(
-        .DATA_WIDTH(DATA_WIDTH), .DEPTH(BATCH_SIZE*BATCH_NUMS)
+        .M(M), .N(N), .B_VEC_LEN(B_VEC_LEN), .T_WIDTH(T_WIDTH)
     ) u_uram (
         .clk(clk), .rst_n(rst_n),
         .host_we(host_we_uram), .host_addr(host_addr_uram), .host_data(host_data_uram),
@@ -52,7 +59,8 @@ module Memory_Subsystem #(
 
     // 3. 缓解布线压力的流水线
     Pipeline_Registers #(
-        .WIDTH(DATA_WIDTH), .STAGES(PIPE_STAGES)
+        .N(N), .B_VEC_LEN(B_VEC_LEN), .T_WIDTH(T_WIDTH),
+        .STAGES(PIPE_STAGES)
     ) u_pipe (
         .clk(clk), .rst_n(rst_n),
         .data_in(uram_dout), .data_out(bram_wr_data_wide)

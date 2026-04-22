@@ -1,10 +1,14 @@
 `timescale 1ns / 1ps
 
 module Data_DMA_Engine #(
-    parameter BATCH_SIZE  = 1024,
-    parameter BATCH_NUMS  = 32,
+    parameter M = 256,
+    parameter N = 256,
+    parameter T_WIDTH = 8,
     parameter RAM_LATENCY = 1,     // URAM 读出延迟
-    parameter PIPE_STAGES = 2      // 流水线延迟
+    parameter PIPE_STAGES = 2,      // 流水线延迟
+    parameter BATCH_SIZE = M *4,
+    parameter BATCH_NUMS = N / T_WIDTH,
+    parameter DEPTH      = BATCH_SIZE * BATCH_NUMS   // URAM 存放 CU 所需的完整权重
 )(
     input  wire                               clk,
     input  wire                               rst_n,
@@ -16,11 +20,11 @@ module Data_DMA_Engine #(
 
     // --- URAM 读侧接口 ---
     output wire                               uram_rd_en,
-    output wire [$clog2(BATCH_SIZE*BATCH_NUMS)-1:0] uram_rd_addr,
+    output wire [$clog2(DEPTH)-1:0]           uram_rd_addr,  // 所有batch
 
-    // --- BRAM 写侧同步控制接口 (与宽数据对齐) ---
+    // --- BRAM 写侧同步控制接口 ---
     output wire                               bram_wr_en,
-    output wire [$clog2(BATCH_SIZE)-1:0]      bram_wr_addr
+    output wire [$clog2(BATCH_SIZE)-1:0]      bram_wr_addr   // 1个batch
 );
 
     // =========================================================================
@@ -28,15 +32,15 @@ module Data_DMA_Engine #(
     // =========================================================================
     localparam TOTAL_LATENCY = RAM_LATENCY + PIPE_STAGES;
     localparam BRAM_ADDR_W   = $clog2(BATCH_SIZE);
-    localparam URAM_ADDR_W   = $clog2(BATCH_SIZE * BATCH_NUMS);
+    localparam URAM_ADDR_W   = $clog2(DEPTH);
 
     reg                   active;
     reg [BRAM_ADDR_W-1:0] local_cnt;
     reg [URAM_ADDR_W-1:0] base_addr;
 
     // 延迟对齐移位寄存器
-    reg [TOTAL_LATENCY-1:0]                 en_shift;
-    reg [BRAM_ADDR_W-1:0]                   addr_shift [0:TOTAL_LATENCY-1];
+    reg [TOTAL_LATENCY-1:0]   en_shift;
+    reg [BRAM_ADDR_W-1:0]     addr_shift [0:TOTAL_LATENCY-1];
 
     integer i;
 

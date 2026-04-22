@@ -18,7 +18,7 @@ module tb_Compute_Core_Array;
     localparam WIDE_BUS_WIDTH    = CU_NUMS * A_PACKED_WIDTH; 
     
     // 地址位宽计算
-    localparam B_ADDR_W          = $clog2(B_VEC_LEN); // 14 bits
+    localparam B_ADDR_W          = $clog2(B_VEC_LEN); 
 
     // =========================================================================
     // 2. 信号定义
@@ -27,7 +27,7 @@ module tb_Compute_Core_Array;
     
     // 广播中心接口
     reg                               host_we_act;
-    reg [B_ADDR_W-1:0]                host_addr_act; // 扩充到14位
+    reg [B_ADDR_W-1:0]                host_addr_act; 
     reg [7:0]                         host_data_act;
     reg                               start_broadcast;
     wire                              broadcast_done;
@@ -45,14 +45,14 @@ module tb_Compute_Core_Array;
     wire                              all_matrix_done;
 
     // 累加器与输出控制
-    reg                               start_accum;    // 新增
-    wire                              accum_done;     // 新增
+    reg                               start_accum;    
+    wire                              accum_done;     
     reg                               out_rd_en;
     reg [$clog2(M)-1:0]               out_rd_addr;
-    wire signed [OUT_WIDTH-1:0]       out_data;       // 变为单值
+    wire signed [OUT_WIDTH-1:0]       out_data;       
 
     // 存储阵列
-    reg [7:0]                         mem_b [0: B_VEC_LEN-1]; // 存完整的11008个数
+    reg [7:0]                         mem_b [0: B_VEC_LEN-1]; 
     reg [A_PACKED_WIDTH-1:0]          mem_a [0: CU_NUMS-1][0: (BATCH_SIZE * BATCH_NUMS - 1)]; 
 
     integer cu, i, j, batch;

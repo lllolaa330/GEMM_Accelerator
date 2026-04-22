@@ -5,16 +5,18 @@ module tb_GEMV_Accelerator_Top;
     // =========================================================================
     // 1. 参数与配置
     // =========================================================================
-    parameter CU_NUMS        = 43;
-    parameter T_WIDTH        = 8;  
-    parameter M = 64, N = 64; // 为加快仿真使用 64                         
+    parameter B_VEC_LEN      = 4096; 
+    parameter M              = 256;
+    parameter N              = 256;
+    parameter T_WIDTH        = 8;                       
+    parameter OUT_WIDTH      = 32;                      
     
     localparam A_PACKED_WIDTH = 18;
     localparam BATCH_NUMS     = N / T_WIDTH;
     localparam BATCH_SIZE     = M * 4;
     localparam WIDE_BUS       = CU_NUMS * A_PACKED_WIDTH;
     localparam URAM_DEPTH     = BATCH_SIZE * BATCH_NUMS;
-    localparam OUT_WIDE       = CU_NUMS * 32;
+    localparam OUT_WIDE       = CU_NUMS * OUT_WIDTH;
 
     // =========================================================================
     // 2. 信号定义
@@ -44,7 +46,7 @@ module tb_GEMV_Accelerator_Top;
     reg [A_PACKED_WIDTH-1:0] mem_a [0: CU_NUMS-1][0: URAM_DEPTH-1]; 
 
     integer cu, i;
-    string  base_dir = "/media/ese/HDD-Data/vivado_projects/0409data_llama3";
+    string  base_dir = "C:/Users/lllolaa/Desktop/0422_data";
 
     // =========================================================================
     // 3. 时钟逻辑

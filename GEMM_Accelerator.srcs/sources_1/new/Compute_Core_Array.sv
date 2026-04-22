@@ -4,7 +4,7 @@ module Compute_Core_Array #(
     parameter T_WIDTH           = 8,
     parameter M                 = 256,
     parameter N                 = 256,
-    parameter B_VEC_LEN         = 11008,
+    parameter B_VEC_LEN         = 4096,
     parameter OUT_WIDTH         = 32,
     parameter CU_NUMS           = B_VEC_LEN / N,       
     parameter A_PACKED_WIDTH    = 10 + T_WIDTH,
