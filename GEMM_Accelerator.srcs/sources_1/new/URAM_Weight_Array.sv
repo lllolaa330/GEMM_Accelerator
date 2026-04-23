@@ -37,9 +37,9 @@ module URAM_Weight_Array #(
         .MEMORY_SIZE        (DEPTH * DATA_WIDTH), 
         .WRITE_DATA_WIDTH_A (DATA_WIDTH),
         .READ_DATA_WIDTH_B  (DATA_WIDTH),
-        .READ_LATENCY_B     (1),                // 1 拍读出延迟
+        .READ_LATENCY_B     (3),                // 3 拍，匹配 URAM 物理特性
         .WRITE_MODE_A       ("no_change"),
-        .WRITE_MODE_B       ("read_first"),
+        .WRITE_MODE_B       ("no_change"),
         .MEMORY_PRIMITIVE   ("ultra"),          // 强制使用 URAM
         .CLOCKING_MODE      ("common_clock"),
         .MEMORY_INIT_PARAM  ("0")

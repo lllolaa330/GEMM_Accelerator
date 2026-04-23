@@ -4,7 +4,7 @@ module Data_DMA_Engine #(
     parameter M = 256,
     parameter N = 256,
     parameter T_WIDTH = 8,
-    parameter RAM_LATENCY = 1,     // URAM 读出延迟
+    parameter RAM_LATENCY = 2,      // URAM 读出延迟
     parameter PIPE_STAGES = 2,      // 流水线延迟
     parameter BATCH_SIZE = M *4,
     parameter BATCH_NUMS = N / T_WIDTH,

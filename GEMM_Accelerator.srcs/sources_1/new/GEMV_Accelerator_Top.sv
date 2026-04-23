@@ -6,6 +6,7 @@ module GEMV_Accelerator_Top #(
     parameter B_VEC_LEN         = 4096,
     parameter T_WIDTH           = 8,
     parameter OUT_WIDTH         = 32,
+    parameter RAM_LATENCY       = 3,
     parameter PIPE_STAGES       = 2,
 
     parameter CU_NUMS        = B_VEC_LEN / N,   
@@ -53,6 +54,8 @@ module GEMV_Accelerator_Top #(
     wire [$clog2(BATCH_NUMS)-1:0]        ctrl_compute_batch_idx;
     wire                                 compute_all_batch_done;
     wire                                 compute_all_matrix_done;
+    wire                                 ctrl_start_accum;
+    wire                                 ctrl_accum_done;
 
     // Mem -> Compute
     wire                                 mem_bram_wr_en;
@@ -70,7 +73,7 @@ module GEMV_Accelerator_Top #(
         .start_dma(ctrl_start_dma), .dma_batch_idx(ctrl_dma_batch_idx), .dma_done(mem_dma_done),
         .ping_pong_sel(ctrl_ping_pong_sel), .start_compute(ctrl_start_compute),
         .compute_batch_idx(ctrl_compute_batch_idx), .all_batch_done(compute_all_batch_done),
-        .start_accum(start_accum), .accum_done(accum_done)
+        .start_accum(ctrl_start_accum), .accum_done(ctrl_accum_done)
     );
 
     // =========================================================================
@@ -78,7 +81,7 @@ module GEMV_Accelerator_Top #(
     // =========================================================================
     Memory_Subsystem #(
         .M(M), .N(N), .B_VEC_LEN(B_VEC_LEN), .T_WIDTH(T_WIDTH),
-        .PIPE_STAGES(PIPE_STAGES)
+        .RAM_LATENCY(RAM_LATENCY), .PIPE_STAGES(PIPE_STAGES)
     ) u_memory (
         .clk(clk), .rst_n(rst_n),
         .start_dma(ctrl_start_dma), .batch_idx(ctrl_dma_batch_idx), .dma_done(mem_dma_done),
@@ -104,6 +107,7 @@ module GEMV_Accelerator_Top #(
         .start_compute(ctrl_start_compute), .current_k_offset(ctrl_compute_batch_idx),
         .all_batch_done(compute_all_batch_done), .all_matrix_done(compute_all_matrix_done),
         
+        .start_accum(ctrl_start_accum),.accum_done(ctrl_accum_done),
         .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
     );
 

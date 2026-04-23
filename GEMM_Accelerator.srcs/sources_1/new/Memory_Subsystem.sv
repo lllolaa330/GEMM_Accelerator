@@ -11,6 +11,7 @@ module Memory_Subsystem #(
     parameter BATCH_SIZE = M *4,
     parameter BATCH_NUMS = N / T_WIDTH,
     parameter DEPTH      = BATCH_SIZE * BATCH_NUMS,   // URAM 存放 CU 所需的完整权重
+    parameter RAM_LATENCY = 3,
     parameter PIPE_STAGES = 2
 )(
     input  wire                               clk,
@@ -40,7 +41,7 @@ module Memory_Subsystem #(
     // 1. DMA 引擎
     Data_DMA_Engine #(
         .M(M), .N(N), .T_WIDTH(T_WIDTH), 
-        .RAM_LATENCY(1), .PIPE_STAGES(PIPE_STAGES)
+        .RAM_LATENCY(RAM_LATENCY), .PIPE_STAGES(PIPE_STAGES)
     ) u_dma (
         .clk(clk), .rst_n(rst_n),
         .start_dma(start_dma), .batch_idx(batch_idx), .dma_done(dma_done),

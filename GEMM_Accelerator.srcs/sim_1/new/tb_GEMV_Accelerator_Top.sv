@@ -10,6 +10,7 @@ module tb_GEMV_Accelerator_Top;
     parameter N              = 256;
     parameter T_WIDTH        = 8;                       
     parameter OUT_WIDTH      = 32;
+    parameter RAM_LATENCY    = 3;
     parameter PIPE_STAGES    = 2;
 
     localparam CU_NUMS        = B_VEC_LEN / N;          // 16
@@ -193,6 +194,7 @@ module tb_GEMV_Accelerator_Top;
         .B_VEC_LEN(B_VEC_LEN),
         .T_WIDTH(T_WIDTH),
         .OUT_WIDTH(OUT_WIDTH),
+        .RAM_LATENCY(RAM_LATENCY),
         .PIPE_STAGES(PIPE_STAGES)
     ) dut (
         .clk(clk),

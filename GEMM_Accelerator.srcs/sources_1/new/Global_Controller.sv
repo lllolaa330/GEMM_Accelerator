@@ -21,7 +21,6 @@ module Global_Controller #(
     input  wire                               all_batch_done,
     input  wire                               all_matrix_done,
 
-    // --- 新增：累加器控制 ---
     output reg                                start_accum,
     input  wire                               accum_done
 );
@@ -38,10 +37,10 @@ module Global_Controller #(
         DONE        = 4'd8;
 
     reg [3:0] state, next_state;
-    reg [$clog2(BATCH_NUMS)-1:0] batch_cnt;
+    reg [$clog2(BATCH_NUMS):0] batch_cnt;  // 拓宽1位，能够容纳 BATCH_NUMS (32) 这个数值
 
-    assign dma_batch_idx     = batch_cnt; 
-    assign compute_batch_idx = batch_cnt - 1'b1; 
+    assign dma_batch_idx     = batch_cnt[$clog2(BATCH_NUMS)-1:0]; 
+    assign compute_batch_idx = batch_cnt[$clog2(BATCH_NUMS)-1:0] - 1'b1; 
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) state <= IDLE;
