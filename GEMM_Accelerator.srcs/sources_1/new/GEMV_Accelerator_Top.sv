@@ -21,14 +21,14 @@ module GEMV_Accelerator_Top #(
     input  wire                               host_start,
     output wire                               system_done,
 
-    // --- 主机配置 L2 URAM 接口 (权重 A) ---
+    // --- 主机配置 L2 URAM 宽接口 (权重 A) ---
     input  wire                               host_we_uram,
     input  wire [$clog2(BATCH_SIZE*BATCH_NUMS)-1:0] host_addr_uram,
     input  wire [WIDE_BUS_WIDTH-1:0]          host_data_uram,
 
-    // --- 主机配置 L1 广播中心接口 (Vector B) ---
+    // --- 主机配置 L1 BRAM 广播中心接口 (Vector B) ---
     input  wire                               host_we_act,
-    input  wire [7:0]                         host_addr_act,
+    input  wire [$clog2(B_VEC_LEN)-1:0]       host_addr_act,
     input  wire [7:0]                         host_data_act,
     input  wire                               host_start_broadcast,
     output wire                               broadcast_done,

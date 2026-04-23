@@ -3,7 +3,7 @@
 module tb_GEMV_Accelerator_Top;
 
     // =========================================================================
-    // 1. 参数与配置 (需与 RTL 保持一致)
+    // 1. 参数与配置 
     // =========================================================================
     parameter B_VEC_LEN      = 4096; 
     parameter M              = 256;
@@ -51,7 +51,7 @@ module tb_GEMV_Accelerator_Top;
     reg [A_PACKED_WIDTH-1:0]          shadow_mem_a [0: CU_NUMS-1][0: URAM_DEPTH-1]; 
 
     integer cu, i, j;
-    string  base_dir = "C:/Users/lllolaa/Desktop/0422_data"; // 请确保路径正确
+    string  base_dir = "C:/Users/lllolaa/Desktop/0422_data"; 
 
     // =========================================================================
     // 3. 时钟与初始化
@@ -74,7 +74,7 @@ module tb_GEMV_Accelerator_Top;
     endtask
 
     // =========================================================================
-    // 4. 数据加载任务 (与 tb_Compute_Core_Array 格式一致)
+    // 4. 数据加载任务 
     // =========================================================================
 
     // Step 1: 加载并配置向量 B
