@@ -73,6 +73,7 @@ module GEMV_Accelerator_Top #(
         .start_dma(ctrl_start_dma), .dma_batch_idx(ctrl_dma_batch_idx), .dma_done(mem_dma_done),
         .ping_pong_sel(ctrl_ping_pong_sel), .start_compute(ctrl_start_compute),
         .compute_batch_idx(ctrl_compute_batch_idx), .all_batch_done(compute_all_batch_done),
+        .all_matrix_done(compute_all_matrix_done),
         .start_accum(ctrl_start_accum), .accum_done(ctrl_accum_done)
     );
 

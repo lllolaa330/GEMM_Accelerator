@@ -38,6 +38,9 @@ module Global_Controller #(
 
     reg [3:0] state, next_state;
     reg [$clog2(BATCH_NUMS):0] batch_cnt;  // 拓宽1位，能够容纳 BATCH_NUMS (32) 这个数值
+    // 用于独立捕获异步脉冲的 flags
+    reg dma_ready_flag;
+    reg cmp_ready_flag;
 
     assign dma_batch_idx     = batch_cnt[$clog2(BATCH_NUMS)-1:0]; 
     assign compute_batch_idx = batch_cnt[$clog2(BATCH_NUMS)-1:0] - 1'b1; 
@@ -55,7 +58,7 @@ module Global_Controller #(
             WAIT_PRE:    if (dma_done) next_state = SYNC_RUN;
             SYNC_RUN:    if (batch_cnt == BATCH_NUMS) next_state = DRAIN; 
                          else next_state = WAIT_SYNC;
-            WAIT_SYNC:   if (dma_done && all_batch_done) next_state = SYNC_RUN;
+            WAIT_SYNC:   if ((dma_done || dma_ready_flag) && (all_batch_done || cmp_ready_flag)) next_state = SYNC_RUN;
             DRAIN:       if (all_matrix_done) next_state = ACCUM;
             ACCUM:       next_state = WAIT_ACCUM;
             WAIT_ACCUM:  if (accum_done) next_state = DONE;
@@ -68,6 +71,7 @@ module Global_Controller #(
         if (!rst_n) begin
             start_dma <= 0; start_compute <= 0; start_accum <= 0;
             ping_pong_sel <= 0; batch_cnt <= 0; system_done <= 0;
+            dma_ready_flag <= 0; cmp_ready_flag <= 0;
         end else begin
             start_dma <= 0; start_compute <= 0; start_accum <= 0; system_done <= 0;
 
@@ -79,8 +83,16 @@ module Global_Controller #(
                     if (batch_cnt < BATCH_NUMS) start_dma <= 1; 
                     start_compute <= 1; 
                     ping_pong_sel <= ~ping_pong_sel; 
+                    dma_ready_flag <= 0; 
+                    cmp_ready_flag <= 0;
                 end
-                WAIT_SYNC:  if (dma_done && all_batch_done) batch_cnt <= batch_cnt + 1;
+                WAIT_SYNC:  begin
+                    if (dma_done)       dma_ready_flag <= 1;
+                    if (all_batch_done) cmp_ready_flag <= 1;
+                    if ((dma_done || dma_ready_flag) && (all_batch_done || cmp_ready_flag)) begin
+                        batch_cnt <= batch_cnt + 1;
+                    end
+                end
                 ACCUM:      start_accum <= 1; 
                 DONE:       system_done <= 1;
             endcase
