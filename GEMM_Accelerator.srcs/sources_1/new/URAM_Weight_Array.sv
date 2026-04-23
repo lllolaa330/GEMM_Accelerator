@@ -38,6 +38,8 @@ module URAM_Weight_Array #(
         .WRITE_DATA_WIDTH_A (DATA_WIDTH),
         .READ_DATA_WIDTH_B  (DATA_WIDTH),
         .READ_LATENCY_B     (3),                // 3 拍，匹配 URAM 物理特性
+        .BYTE_WRITE_WIDTH_A (DATA_WIDTH),
+        .BYTE_WRITE_WIDTH_B (DATA_WIDTH),
         .WRITE_MODE_A       ("no_change"),
         .WRITE_MODE_B       ("no_change"),
         .MEMORY_PRIMITIVE   ("ultra"),          // 强制使用 URAM
@@ -56,6 +58,13 @@ module URAM_Weight_Array #(
         .doutb          (dma_rd_data),
         
         // 闲置端口绑零
+        .rsta           (1'b0),               // 解除 Port A 的强制复位锁定
+        .regcea         (1'b1),               // 开启 Port A 寄存器(规范要求)
+        .web            (1'b0),               // 严禁 Port B 发生随机写入
+        .dinb           ({DATA_WIDTH{1'b0}}), // 赋默认全 0
+        .injectsbiterrb (1'b0),
+        .injectdbiterrb (1'b0),
+
         .regceb         (1'b1),
         .rstb           (1'b0),
         .sleep          (1'b0),
