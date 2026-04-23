@@ -95,7 +95,8 @@ module GEMV_Accelerator_Top #(
     // =========================================================================
     Compute_Core_Array #(
         .T_WIDTH(T_WIDTH), .M(M), .N(N), 
-        .B_VEC_LEN(B_VEC_LEN), .OUT_WIDTH(OUT_WIDTH)
+        .B_VEC_LEN(B_VEC_LEN), .CU_NUMS(CU_NUMS),
+        .OUT_WIDTH(OUT_WIDTH)
     ) u_compute_array (
         .clk(clk), .rst_n(rst_n),
         

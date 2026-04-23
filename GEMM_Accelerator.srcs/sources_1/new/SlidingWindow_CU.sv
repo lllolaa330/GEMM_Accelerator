@@ -5,6 +5,7 @@ module SlidingWindow_CU #(
     parameter N                 = 64,                 // 权重形状：M*N
     parameter T_WIDTH           = 8,                  // Bit-reuse 行模式位宽
     parameter WINDOW_SIZE       = 16,                 // 窗口大小
+    parameter B_DATA_BITS       = 8,
     parameter PSUM_WIDTH        = 24,
     parameter OUT_WIDTH         = 32,
     parameter A_PACKED_WIDTH    = 10 + T_WIDTH,       // node:[17:10] row_idx:[9:2] bitplane_id:[1:0]            
@@ -17,7 +18,7 @@ module SlidingWindow_CU #(
     // --- Configuration Interface B (Vector B) ---
     input  wire                                 cfg_we_b,
     input  wire [7:0]                           cfg_addr_b,
-    input  wire [7:0]                           cfg_data_b, 
+    input  wire [B_DATA_BITS-1:0]               cfg_data_b, 
 
     // --- Runtime Data Stream ---
     input  wire                                 a_valid,

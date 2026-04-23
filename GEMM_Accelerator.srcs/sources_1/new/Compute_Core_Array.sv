@@ -6,7 +6,7 @@ module Compute_Core_Array #(
     parameter N                 = 256,
     parameter B_VEC_LEN         = 4096,
     parameter OUT_WIDTH         = 32,
-    parameter CU_NUMS           = B_VEC_LEN / N,       
+    parameter CU_NUMS           = 16,        // B_VEC_LEN / N
     parameter A_PACKED_WIDTH    = 10 + T_WIDTH,
     parameter BATCH_NUMS        = N / T_WIDTH,
     parameter BATCH_SIZE        = M * 4,
