@@ -3,7 +3,7 @@
 module GEMV_Accelerator_Top #(
     parameter M                 = 256,
     parameter N                 = 256,
-    parameter B_VEC_LEN         = 4096,
+    parameter B_VEC_LEN         = 2048,
     parameter T_WIDTH           = 8,
     parameter OUT_WIDTH         = 32,
     parameter RAM_LATENCY       = 3,

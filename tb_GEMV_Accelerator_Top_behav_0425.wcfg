@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="tb_GEMV_Accelerator_Top_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="tb_GEMV_Accelerator_Top" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0.000000 us"></ZoomStartTime>
+      <ZoomEndTime time="993.000001 us"></ZoomEndTime>
+      <Cursor1Time time="0.000000 us"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="344"></NameColumnWidth>
+      <ValueColumnWidth column_width="116"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="39" />
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/rst_n" type="logic">
+      <obj_property name="ElementShortName">rst_n</obj_property>
+      <obj_property name="ObjectShortName">rst_n</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_start" type="logic">
+      <obj_property name="ElementShortName">host_start</obj_property>
+      <obj_property name="ObjectShortName">host_start</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/system_done" type="logic">
+      <obj_property name="ElementShortName">system_done</obj_property>
+      <obj_property name="ObjectShortName">system_done</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_we_uram" type="logic">
+      <obj_property name="ElementShortName">host_we_uram</obj_property>
+      <obj_property name="ObjectShortName">host_we_uram</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_addr_uram" type="array">
+      <obj_property name="ElementShortName">host_addr_uram[14:0]</obj_property>
+      <obj_property name="ObjectShortName">host_addr_uram[14:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_data_uram" type="array">
+      <obj_property name="ElementShortName">host_data_uram[1007:0]</obj_property>
+      <obj_property name="ObjectShortName">host_data_uram[1007:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_we_act" type="logic">
+      <obj_property name="ElementShortName">host_we_act</obj_property>
+      <obj_property name="ObjectShortName">host_we_act</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_addr_act" type="array">
+      <obj_property name="ElementShortName">host_addr_act[13:0]</obj_property>
+      <obj_property name="ObjectShortName">host_addr_act[13:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_data_act" type="array">
+      <obj_property name="ElementShortName">host_data_act[7:0]</obj_property>
+      <obj_property name="ObjectShortName">host_data_act[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/host_start_broadcast" type="logic">
+      <obj_property name="ElementShortName">host_start_broadcast</obj_property>
+      <obj_property name="ObjectShortName">host_start_broadcast</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/broadcast_done" type="logic">
+      <obj_property name="ElementShortName">broadcast_done</obj_property>
+      <obj_property name="ObjectShortName">broadcast_done</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/out_rd_en" type="logic">
+      <obj_property name="ElementShortName">out_rd_en</obj_property>
+      <obj_property name="ObjectShortName">out_rd_en</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/out_rd_addr" type="array">
+      <obj_property name="ElementShortName">out_rd_addr[7:0]</obj_property>
+      <obj_property name="ObjectShortName">out_rd_addr[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/out_data" type="array">
+      <obj_property name="ElementShortName">out_data[31:0]</obj_property>
+      <obj_property name="ObjectShortName">out_data[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/cu" type="array">
+      <obj_property name="ElementShortName">cu[31:0]</obj_property>
+      <obj_property name="ObjectShortName">cu[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/i" type="array">
+      <obj_property name="ElementShortName">i[31:0]</obj_property>
+      <obj_property name="ObjectShortName">i[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/j" type="array">
+      <obj_property name="ElementShortName">j[31:0]</obj_property>
+      <obj_property name="ObjectShortName">j[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/loop_idx" type="array">
+      <obj_property name="ElementShortName">loop_idx[31:0]</obj_property>
+      <obj_property name="ObjectShortName">loop_idx[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/file_idx" type="array">
+      <obj_property name="ElementShortName">file_idx[31:0]</obj_property>
+      <obj_property name="ObjectShortName">file_idx[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/gemv_idx" type="array">
+      <obj_property name="ElementShortName">gemv_idx[31:0]</obj_property>
+      <obj_property name="ObjectShortName">gemv_idx[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/gemv_err_cnt" type="array">
+      <obj_property name="ElementShortName">gemv_err_cnt[0:1][31:0]</obj_property>
+      <obj_property name="ObjectShortName">gemv_err_cnt[0:1][31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/total_gemm_err_cnt" type="array">
+      <obj_property name="ElementShortName">total_gemm_err_cnt[31:0]</obj_property>
+      <obj_property name="ObjectShortName">total_gemm_err_cnt[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/WEIGHT_TOTAL_ROW" type="array">
+      <obj_property name="ElementShortName">WEIGHT_TOTAL_ROW[31:0]</obj_property>
+      <obj_property name="ObjectShortName">WEIGHT_TOTAL_ROW[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/B_VEC_LEN" type="array">
+      <obj_property name="ElementShortName">B_VEC_LEN[31:0]</obj_property>
+      <obj_property name="ObjectShortName">B_VEC_LEN[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/M" type="array">
+      <obj_property name="ElementShortName">M[31:0]</obj_property>
+      <obj_property name="ObjectShortName">M[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/N" type="array">
+      <obj_property name="ElementShortName">N[31:0]</obj_property>
+      <obj_property name="ObjectShortName">N[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/T_WIDTH" type="array">
+      <obj_property name="ElementShortName">T_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">T_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/OUT_WIDTH" type="array">
+      <obj_property name="ElementShortName">OUT_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">OUT_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/RAM_LATENCY" type="array">
+      <obj_property name="ElementShortName">RAM_LATENCY[31:0]</obj_property>
+      <obj_property name="ObjectShortName">RAM_LATENCY[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/PIPE_STAGES" type="array">
+      <obj_property name="ElementShortName">PIPE_STAGES[31:0]</obj_property>
+      <obj_property name="ObjectShortName">PIPE_STAGES[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/CU_NUMS" type="array">
+      <obj_property name="ElementShortName">CU_NUMS[31:0]</obj_property>
+      <obj_property name="ObjectShortName">CU_NUMS[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/A_PACKED_WIDTH" type="array">
+      <obj_property name="ElementShortName">A_PACKED_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">A_PACKED_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/BATCH_NUMS" type="array">
+      <obj_property name="ElementShortName">BATCH_NUMS[31:0]</obj_property>
+      <obj_property name="ObjectShortName">BATCH_NUMS[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/BATCH_SIZE" type="array">
+      <obj_property name="ElementShortName">BATCH_SIZE[31:0]</obj_property>
+      <obj_property name="ObjectShortName">BATCH_SIZE[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/WIDE_BUS_WIDTH" type="array">
+      <obj_property name="ElementShortName">WIDE_BUS_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">WIDE_BUS_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/URAM_DEPTH" type="array">
+      <obj_property name="ElementShortName">URAM_DEPTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">URAM_DEPTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/LOOP_COUNT" type="array">
+      <obj_property name="ElementShortName">LOOP_COUNT[31:0]</obj_property>
+      <obj_property name="ObjectShortName">LOOP_COUNT[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/GEMV_NUM" type="array">
+      <obj_property name="ElementShortName">GEMV_NUM[31:0]</obj_property>
+      <obj_property name="ObjectShortName">GEMV_NUM[31:0]</obj_property>
+   </wvobject>
+</wave_config>
