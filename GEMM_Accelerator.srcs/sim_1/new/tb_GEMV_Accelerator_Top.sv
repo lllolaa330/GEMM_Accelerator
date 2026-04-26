@@ -5,8 +5,8 @@ module tb_GEMV_Accelerator_Top;
     // =========================================================================
     // 1. 参数与配置 
     // =========================================================================
-    parameter WEIGHT_TOTAL_ROW = 4096;                  // 完整的权重总行数
-    parameter B_VEC_LEN      = 14336; 
+    parameter WEIGHT_TOTAL_ROW = 1024;                  // 完整的权重总行数
+    parameter B_VEC_LEN      = 4096; 
     parameter M              = 256;
     parameter N              = 256;
     parameter T_WIDTH        = 8;                       
@@ -22,7 +22,7 @@ module tb_GEMV_Accelerator_Top;
     localparam URAM_DEPTH     = BATCH_SIZE * BATCH_NUMS;  // 32768
     
     localparam LOOP_COUNT     = WEIGHT_TOTAL_ROW / M;   // 计算需调用Top模块的次数 (4096/256=16)
-    localparam GEMV_NUM       = 2;                      // 总共计算20次GEMV（组成1个GEMM）
+    localparam GEMV_NUM       = 1;                      // 总共计算20次GEMV（组成1个GEMM）
 
     // =========================================================================
     // 2. 信号定义
@@ -106,7 +106,7 @@ module tb_GEMV_Accelerator_Top;
         string b_path;
         begin
             $display("[%0t] Loading Vector B for GEMV %0d...", $time, g_idx);
-            b_path = $sformatf("%s/b/down_proj/b_%04d.txt", base_dir, g_idx);
+            b_path = $sformatf("%s/b/k_proj/b_%04d.txt", base_dir, g_idx);
             $readmemh(b_path, mem_b);
             
             for (i = 0; i < B_VEC_LEN; i = i + 1) begin
@@ -137,7 +137,7 @@ module tb_GEMV_Accelerator_Top;
             // 先读入内存
             for (cu = 0; cu < CU_NUMS; cu = cu + 1) begin
                 file_idx = l_idx * CU_NUMS + cu; // 根据循环计算真实文件编号
-                a_path = $sformatf("%s/a_packed/down_proj/a_%04d.txt", base_dir, file_idx);
+                a_path = $sformatf("%s/a_packed/k_proj/a_%04d.txt", base_dir, file_idx);
                 $readmemh(a_path, temp_mem_a);
                 for (j = 0; j < URAM_DEPTH; j = j + 1) begin
                     shadow_mem_a[cu][j] = temp_mem_a[j];
@@ -191,7 +191,7 @@ module tb_GEMV_Accelerator_Top;
             
             // 读取对应编号的 Golden 文件
             $display("\n[%0t] Loading Golden Results for GEMV %0d...", $time, g_idx);
-            golden_path = $sformatf("%s/golden/down_proj/golden_%04d.txt", base_dir, g_idx);
+            golden_path = $sformatf("%s/golden/k_proj/golden_%04d.txt", base_dir, g_idx);
             $readmemh(golden_path, golden_mem);
 
             $display("\n==================================================================");
