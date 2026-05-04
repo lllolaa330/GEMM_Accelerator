@@ -9,6 +9,7 @@ module Global_Controller #(
     input  wire                               rst_n,
 
     input  wire                               start_system,
+    input  wire                               host_uram_batch_ready, // 新增输入
     output reg                                system_done,
 
     output reg                                start_dma,
@@ -26,18 +27,21 @@ module Global_Controller #(
 );
 
     localparam [3:0] 
-        IDLE        = 4'd0,
-        PRELOAD_DMA = 4'd1, 
-        WAIT_PRE    = 4'd2,
-        SYNC_RUN    = 4'd3, 
-        WAIT_SYNC   = 4'd4,
-        DRAIN       = 4'd5, 
-        ACCUM       = 4'd6, 
-        WAIT_ACCUM  = 4'd7,
-        DONE        = 4'd8;
+        IDLE            = 4'd0,
+        WAIT_URAM_PRE   = 4'd1, // 新增：预装载前等待首个Batch写入URAM
+        PRELOAD_DMA     = 4'd2, 
+        WAIT_PRE        = 4'd3,
+        CHECK_URAM_SYNC = 4'd4, // 新增：运行中检查URAM是否有下一个Batch
+        SYNC_RUN        = 4'd5, 
+        WAIT_SYNC       = 4'd6,
+        DRAIN           = 4'd7, 
+        ACCUM           = 4'd8, 
+        WAIT_ACCUM      = 4'd9,
+        DONE            = 4'd10;
 
     reg [3:0] state, next_state;
     reg [$clog2(BATCH_NUMS):0] batch_cnt;  // 拓宽1位，能够容纳 BATCH_NUMS (32) 这个数值
+    reg [$clog2(BATCH_NUMS):0] uram_ready_cnt; // 新增：追踪Host写完了几个Batch
     // 用于独立捕获异步脉冲的 flags
     reg dma_ready_flag;
     reg cmp_ready_flag;
@@ -50,12 +54,29 @@ module Global_Controller #(
         else        state <= next_state;
     end
 
+    // 新增：维护 uram_ready_cnt 的 always 块
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            uram_ready_cnt <= 0;
+        end else begin
+            if (state == DONE) begin
+                uram_ready_cnt <= 0; // 一轮矩阵计算结束，清零
+            end else if (host_uram_batch_ready) begin
+                uram_ready_cnt <= uram_ready_cnt + 1'b1; // Host写完一个Batch就+1
+            end
+        end
+    end
+
     always @(*) begin
         next_state = state;
         case (state)
             IDLE:        if (start_system) next_state = PRELOAD_DMA;
+            WAIT_URAM_PRE:   if (uram_ready_cnt > 0) next_state = PRELOAD_DMA; // 等待第一个Batch就绪
             PRELOAD_DMA: next_state = WAIT_PRE;
-            WAIT_PRE:    if (dma_done) next_state = SYNC_RUN;
+            WAIT_PRE:    if (dma_done) next_state = CHECK_URAM_SYNC; // 去检查下个Batch;
+            CHECK_URAM_SYNC: if (batch_cnt == BATCH_NUMS) next_state = DRAIN; 
+                             else if (uram_ready_cnt > batch_cnt) next_state = SYNC_RUN; // 核心：URAM准备好的Batch数必须大于即将启动DMA的Batch索引
+                             // 否则保持在 CHECK_URAM_SYNC 等待 Host 写入
             SYNC_RUN:    if (batch_cnt == BATCH_NUMS) next_state = DRAIN; 
                          else next_state = WAIT_SYNC;
             WAIT_SYNC:   if ((dma_done || dma_ready_flag) && (all_batch_done || cmp_ready_flag)) next_state = SYNC_RUN;
@@ -80,7 +101,7 @@ module Global_Controller #(
                 PRELOAD_DMA: start_dma <= 1; 
                 WAIT_PRE: if (dma_done) batch_cnt <= batch_cnt + 1; 
                 SYNC_RUN: begin
-                    if (batch_cnt < BATCH_NUMS) start_dma <= 1; 
+                    start_dma <= 1; 
                     start_compute <= 1; 
                     ping_pong_sel <= ~ping_pong_sel; 
                     dma_ready_flag <= 0; 

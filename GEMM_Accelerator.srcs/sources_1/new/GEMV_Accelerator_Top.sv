@@ -20,6 +20,7 @@ module GEMV_Accelerator_Top #(
 
     // --- 主机控制接口 ---
     input  wire                               host_start,
+    input  wire                               host_uram_batch_ready, // 新增：Host每写完一个Batch的URAM数据，拉高1拍
     output wire                               system_done,
 
     // --- 主机配置 L2 URAM 宽接口 (权重 A) ---
@@ -69,7 +70,7 @@ module GEMV_Accelerator_Top #(
         .N(N), .T_WIDTH(T_WIDTH)
     ) u_controller (
         .clk(clk), .rst_n(rst_n),
-        .start_system(host_start), .system_done(system_done),
+        .start_system(host_start), .host_uram_batch_ready(host_uram_batch_ready), .system_done(system_done),
         .start_dma(ctrl_start_dma), .dma_batch_idx(ctrl_dma_batch_idx), .dma_done(mem_dma_done),
         .ping_pong_sel(ctrl_ping_pong_sel), .start_compute(ctrl_start_compute),
         .compute_batch_idx(ctrl_compute_batch_idx), .all_batch_done(compute_all_batch_done),

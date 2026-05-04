@@ -32,6 +32,7 @@ module tb_GEMV_Accelerator_Top;
     
     // 控制接口
     reg                               host_start;
+    reg                               host_uram_batch_ready;
     wire                              system_done;
 
     // URAM 权重配置接口
@@ -101,6 +102,7 @@ module tb_GEMV_Accelerator_Top;
         begin
             rst_n = 0;
             host_start = 0;
+            host_uram_batch_ready = 0;
             host_we_uram = 0; host_addr_uram = 0; host_data_uram = 0;
             host_we_act = 0; host_addr_act = 0; host_data_act = 0;
             host_start_broadcast = 0;
@@ -182,9 +184,7 @@ module tb_GEMV_Accelerator_Top;
                 end
             end
 
-            // 统计 Weight：外部写入 URAM 用时
-            start_cc = global_cycle_cnt;
-            // 写入 URAM (宽总线拼接)
+            // 写入 URAM (宽总线拼接，带 Batch Ready 脉冲)
             for (j = 0; j < URAM_DEPTH; j = j + 1) begin
                 @(negedge clk);
                 host_we_uram   = 1;
@@ -192,11 +192,19 @@ module tb_GEMV_Accelerator_Top;
                 for (cu = 0; cu < CU_NUMS; cu = cu + 1) begin
                     host_data_uram[cu * A_PACKED_WIDTH +: A_PACKED_WIDTH] = shadow_mem_a[cu][j];
                 end
+                
+                // 判断是否写满了一个 Batch
+                if ((j + 1) % BATCH_SIZE == 0) begin
+                    @(negedge clk);
+                    host_we_uram = 0;               // 暂停写一拍
+                    host_uram_batch_ready = 1;      // 发送 Batch 准备好脉冲
+                    @(negedge clk);
+                    host_uram_batch_ready = 0;      // 撤销脉冲，继续下一个 Batch 写入
+                end
             end
             @(negedge clk);
             host_we_uram = 0;
-            // 累加到当前全局的 GEMV_IDX 中
-            prof_wt_ext_to_uram[gemv_idx] = prof_wt_ext_to_uram[gemv_idx] + (global_cycle_cnt - start_cc);
+            // 注：此处删除了 prof_wt_ext_to_uram 的计时累加，因为该过程已和 Compute 完全重叠
         end
     endtask
 
@@ -299,26 +307,25 @@ module tb_GEMV_Accelerator_Top;
         end
     endtask
 
-    // [新增] 性能测试周期汇总统计报告
+    // 性能测试周期汇总统计报告
     task print_performance_profiling;
         integer total_gemv_cycles;
         begin
             $display("\n##############################################################################################################");
             $display("                                      GEMM PERFORMANCE PROFILING REPORT                                       ");
             $display("##############################################################################################################");
-            // $display("  Note: Wgt 'URAM->BRAM->CU' internal move overlaps with Compute and is merged into 'Compute' column.");
-            $display("--------------------------------------------------------------------------------------------------------------");
-            $display(" GEMV | Act:Ext->BRAM | Act:BRAM->CU | Wgt:Ext->URAM | Compute(Inc Wgt internal)| Out:BRAM->Ext | TOTAL CYCLES ");
-            $display("--------------------------------------------------------------------------------------------------------------");
+            $display("----------------------------------------------------------------------------------------------------------");
+            $display(" GEMV | Act:Ext->BRAM | Act:BRAM->CU | Overlapped (Host->URAM + Compute) | Out:BRAM->Ext | TOTAL CYCLES ");
+            $display("----------------------------------------------------------------------------------------------------------");
             for (i = 0; i < GEMV_NUM; i = i + 1) begin
+                // 剔除了 prof_wt_ext_to_uram，因为 prof_compute 已经涵盖了重叠后的整体真实物理时间，防止 Double-count
                 total_gemv_cycles = prof_act_ext_to_bram[i] + prof_act_bram_to_cu[i] + 
-                                    prof_wt_ext_to_uram[i] + prof_compute[i] + prof_out_bram_to_ext[i];
-                $display("  %02d  | %13d | %12d | %13d | %24d | %13d | %12d ", 
+                                    prof_compute[i] + prof_out_bram_to_ext[i];
+                $display("  %02d  | %13d | %12d | %33d | %13d | %12d ", 
                          i, 
                          prof_act_ext_to_bram[i], 
                          prof_act_bram_to_cu[i],
-                         prof_wt_ext_to_uram[i],
-                         prof_compute[i],
+                         prof_compute[i],         // 此处代表重叠后花费的净总时间
                          prof_out_bram_to_ext[i],
                          total_gemv_cycles);
             end
@@ -355,20 +362,20 @@ module tb_GEMV_Accelerator_Top;
                 // 每次复位后重新加载对应的 B 向量
                 config_b_vector(gemv_idx);
                 
-                // a) 配置当前子矩阵块权重 A
-                config_a_weights(loop_idx);
+                // a) 先触发系统启动，让硬件进入WAIT_URAM_PRE状态等待数据
+                $display("[%0t] [GEMV %02d Loop %0d] Triggering System Start (Wait for URAM)...", $time, gemv_idx, loop_idx);
                 
-                // b) 触发系统启动 (并开启 Compute 时长统计)
-                $display("[%0t] [GEMV %02d Loop %0d] Triggering System Start...", $time, gemv_idx, loop_idx);
-                
-                tmp_cycle_start = global_cycle_cnt; // 记录 Compute (含 Wgt的 URAM->BRAM->CU) 开始
+                tmp_cycle_start = global_cycle_cnt; // [重要] 记录包含Host写URAM及底层Compute在内的 Overall 总时间起点
                 
                 @(negedge clk);
                 host_start = 1;
                 @(negedge clk);
                 host_start = 0;
 
-                // c) 等待全流程完成
+                // b) 配置当前子矩阵块权重 A (此时硬件会在后台自动按Batch取数据并Compute)
+                config_a_weights(loop_idx);
+
+                // c) 阻塞等待全流程计算完成 (重叠掩盖的部分在这里收尾)
                 wait(system_done == 1'b1);
                 
                 // 计算系统运行(Compute)耗时并累加
@@ -416,6 +423,7 @@ module tb_GEMV_Accelerator_Top;
 
         // 主机控制
         .host_start(host_start),
+        .host_uram_batch_ready(host_uram_batch_ready),
         .system_done(system_done),
 
         // L2 URAM 配置
