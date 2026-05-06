@@ -5,8 +5,9 @@ module tb_GEMV_Accelerator_Top;
     // =========================================================================
     // 1. 参数与配置 
     // =========================================================================
-    parameter WEIGHT_TOTAL_ROW = 4096;                  // 完整的权重总行数
-    parameter B_VEC_LEN      = 14336;                    // 完整的权重总列数 也是 B向量的长度
+    parameter CU_TYPE        = 1;                       // 0:Sliding, 1:Dynamic, 2:Static, 3:DSP
+    parameter WEIGHT_TOTAL_ROW = 1024;                  // 完整的权重总行数
+    parameter B_VEC_LEN      = 4096;                    // 完整的权重总列数 也是 B向量的长度
     parameter M              = 256;                     // 底层 CU 计算的行数 (每次处理256行)
     parameter N              = 256;                     // 底层 CU 计算的列数 (每次处理256列) 
     parameter T_WIDTH        = 8;                       // 比特重用位宽
@@ -47,6 +48,17 @@ module tb_GEMV_Accelerator_Top;
     reg                               host_start_broadcast;
     wire                              broadcast_done;
 
+    // SI 接口
+    reg                               host_we_si;
+    reg [7:0]                         host_addr_si;
+    reg [T_WIDTH-1:0]                 host_data_si;
+    reg [T_WIDTH-1:0]                 mem_si [0: 255];
+
+    // DSP 直通寄存器
+    reg                               host_dsp_valid;
+    reg [CU_NUMS*4-1:0]               host_dsp_payload;
+    reg                               host_start_accum_dsp;
+
     // 结果读取接口
     reg                               out_rd_en;
     reg [$clog2(M)-1:0]               out_rd_addr;
@@ -56,6 +68,9 @@ module tb_GEMV_Accelerator_Top;
     reg [7:0]                         mem_b [0: B_VEC_LEN-1]; 
     reg [A_PACKED_WIDTH-1:0]          temp_mem_a [0: URAM_DEPTH-1]; 
     reg [A_PACKED_WIDTH-1:0]          shadow_mem_a [0: CU_NUMS-1][0: URAM_DEPTH-1]; 
+    reg [3:0]                         temp_mem_dsp [0: M*N-1]; // DSP一轮需要 65536 个
+    reg [3:0]                         shadow_mem_dsp [0: CU_NUMS-1][0: M*N-1];
+    reg [T_WIDTH-1:0]                 mem_si [0: 255]; 
     
     // 完整 4096 行计算结果与 Golden 数据存放区
     reg [OUT_WIDTH-1:0]               final_results [0: WEIGHT_TOTAL_ROW-1];
@@ -72,7 +87,7 @@ module tb_GEMV_Accelerator_Top;
     string  base_dir = "C:/Users/lllolaa/Desktop/data_L38/data_L38"; 
 
     // =========================================================================
-    // [新增] 性能统计(Profiling)变量 - 记录每一次 GEMV 各阶段的周期数
+    // 性能统计(Profiling)变量 - 记录每一次 GEMV 各阶段的周期数
     // =========================================================================
     integer global_cycle_cnt;             // 全局时钟周期计数器
     
@@ -93,7 +108,7 @@ module tb_GEMV_Accelerator_Top;
     end
     always #1.667 clk = ~clk; // ~300MHz
 
-    // [新增] 全局时钟周期累加
+    // 全局时钟周期累加
     always @(posedge clk) begin
         global_cycle_cnt <= global_cycle_cnt + 1;
     end
@@ -105,8 +120,11 @@ module tb_GEMV_Accelerator_Top;
             host_uram_batch_ready = 0;
             host_we_uram = 0; host_addr_uram = 0; host_data_uram = 0;
             host_we_act = 0; host_addr_act = 0; host_data_act = 0;
+            host_we_si = 0; host_addr_si = 0; host_data_si = 0;
+            host_dsp_valid = 0; host_dsp_payload = 0;
             host_start_broadcast = 0;
             out_rd_en = 0; out_rd_addr = 0;
+            host_start_accum_dsp = 0;
             
             // 初始化错误统计 和 性能统计
             total_gemm_err_cnt = 0;
@@ -131,14 +149,14 @@ module tb_GEMV_Accelerator_Top;
     // 4. 数据加载与读取任务 (加入周期统计)
     // =========================================================================
 
-    // Step 1: 加载并配置向量 B 
+    // Step 1: 加载并配置向量 B 和 SI
     task config_b_vector;
         input integer g_idx;
         string b_path;
         integer start_cc; // 局部时间记录
         begin
             $display("[%0t] Loading Vector B for GEMV %0d...", $time, g_idx);
-            b_path = $sformatf("%s/b/down_proj/b_%04d.txt", base_dir, g_idx);
+            b_path = $sformatf("%s/b/k_proj/b_%04d.txt", base_dir, g_idx);
             $readmemh(b_path, mem_b);
             
             // 统计 Act：外部写入 BRAM 用时
@@ -167,6 +185,58 @@ module tb_GEMV_Accelerator_Top;
         end
     endtask
 
+    task config_static_si;
+        begin
+            $display("[%0t] Loading Global Static SI...", $time);
+            $readmemh($sformatf("%s/SI.txt", base_dir), mem_si);
+            for (i = 0; i < 256; i = i + 1) begin
+                @(negedge clk);
+                host_we_si   = 1; 
+                host_addr_si = i; 
+                host_data_si = mem_si[i];
+            end
+            @(negedge clk); 
+            host_we_si = 0;
+        end
+    endtask
+
+    task config_dsp_and_compute;
+        input integer l_idx;
+        begin
+            $display("[%0t] [Loop %0d] DSP Baseline Direct Streaming...", $time, l_idx);
+            // 读取另外准备的 DSP 4bit 完整权重
+            for (cu = 0; cu < CU_NUMS; cu = cu + 1) begin
+                file_idx = l_idx * CU_NUMS + cu; 
+                $readmemh($sformatf("%s/a_dsp/k_proj/a_%04d.txt", base_dir, file_idx), temp_mem_dsp);
+                for (j = 0; j < (M*N); j = j + 1) begin
+                    shadow_mem_dsp[cu][j] = temp_mem_dsp[j];
+                end
+            end
+
+            // 连续 M*N 拍直通打入数据
+            for (j = 0; j < (M*N); j = j + 1) begin
+                @(negedge clk);
+                host_dsp_valid = 1;
+                for (cu = 0; cu < CU_NUMS; cu = cu + 1) begin
+                    host_dsp_payload[cu*4 +: 4] = shadow_mem_dsp[cu][j];
+                end
+            end
+            @(negedge clk);
+            host_dsp_valid = 0;
+
+            // 延时等待 DSP 流水线吐完部分和，并触发 Array_Output_Accumulation
+            #200; 
+            @(negedge clk);
+            host_start_accum_dsp = 1;
+            @(negedge clk);
+            host_start_accum_dsp = 0;
+            
+            // 累加器运行需要 256 周期
+            #(M * 2 * 1.667); 
+            #100;
+        end
+    endtask
+
     // Step 2: 根据当前的循环次数，加载对应的权重块进入 L2 URAM
     task config_a_weights;
         input integer l_idx;
@@ -176,8 +246,9 @@ module tb_GEMV_Accelerator_Top;
             $display("[%0t] [Loop %0d] Loading Weights A into L2 URAM...", $time, l_idx);
             // 先读入内存
             for (cu = 0; cu < CU_NUMS; cu = cu + 1) begin
-                file_idx = l_idx * CU_NUMS + cu; // 根据循环计算真实文件编号
-                a_path = $sformatf("%s/a_packed/down_proj/a_%04d.txt", base_dir, file_idx);
+                file_idx = l_idx * CU_NUMS + cu; // 根据循环计算真实文件编号，从0000开始
+
+                a_path = $sformatf("%s/a_packed/k_proj/a_%04d.txt", base_dir, file_idx);
                 $readmemh(a_path, temp_mem_a);
                 for (j = 0; j < URAM_DEPTH; j = j + 1) begin
                     shadow_mem_a[cu][j] = temp_mem_a[j];
@@ -204,7 +275,6 @@ module tb_GEMV_Accelerator_Top;
             end
             @(negedge clk);
             host_we_uram = 0;
-            // 注：此处删除了 prof_wt_ext_to_uram 的计时累加，因为该过程已和 Compute 完全重叠
         end
     endtask
 
@@ -245,7 +315,7 @@ module tb_GEMV_Accelerator_Top;
             err_cnt = 0;
             
             $display("\n[%0t] Loading Golden Results for GEMV %0d...", $time, g_idx);
-            golden_path = $sformatf("%s/golden/down_proj/golden_%04d.txt", base_dir, g_idx);
+            golden_path = $sformatf("%s/golden/k_proj/golden_%04d.txt", base_dir, g_idx);
             $readmemh(golden_path, golden_mem);
 
             $display("\n==================================================================");
@@ -318,7 +388,6 @@ module tb_GEMV_Accelerator_Top;
             $display(" GEMV | Act:Ext->BRAM | Act:BRAM->CU | Overlapped (Host->URAM + Compute) | Out:BRAM->Ext | TOTAL CYCLES ");
             $display("----------------------------------------------------------------------------------------------------------");
             for (i = 0; i < GEMV_NUM; i = i + 1) begin
-                // 剔除了 prof_wt_ext_to_uram，因为 prof_compute 已经涵盖了重叠后的整体真实物理时间，防止 Double-count
                 total_gemv_cycles = prof_act_ext_to_bram[i] + prof_act_bram_to_cu[i] + 
                                     prof_compute[i] + prof_out_bram_to_ext[i];
                 $display("  %02d  | %13d | %12d | %33d | %13d | %12d ", 
@@ -347,49 +416,51 @@ module tb_GEMV_Accelerator_Top;
 
             // 原本的内层大矩阵循环：共 4096/256 = 16 次
             for (loop_idx = 0; loop_idx < LOOP_COUNT; loop_idx = loop_idx + 1) begin
-                $display("\n------------------------------------------------------------------");
-                $display(">>> GEMV %02d | Iteration: %0d / %0d <<<", gemv_idx, loop_idx + 1, LOOP_COUNT);
-                
-                if ((gemv_idx > 0) || (loop_idx > 0)) begin
-                    $display("[%0t] [GEMV %02d Loop %0d] Applying Hard Reset to DUT...", $time, gemv_idx, loop_idx);
-                    @(negedge clk);
-                    rst_n = 0;
-                    #100;
-                    rst_n = 1;
-                    #100;
+
+                if (CU_TYPE == 3) begin
+                    // ---- DSP Baseline ----
+                    config_dsp_and_compute(loop_idx); 
                 end
-                
-                // 每次复位后重新加载对应的 B 向量
-                config_b_vector(gemv_idx);
-                
-                // a) 先触发系统启动，让硬件进入WAIT_URAM_PRE状态等待数据
-                $display("[%0t] [GEMV %02d Loop %0d] Triggering System Start (Wait for URAM)...", $time, gemv_idx, loop_idx);
-                
-                tmp_cycle_start = global_cycle_cnt; // [重要] 记录包含Host写URAM及底层Compute在内的 Overall 总时间起点
-                
-                @(negedge clk);
-                host_start = 1;
-                @(negedge clk);
-                host_start = 0;
 
-                // b) 配置当前子矩阵块权重 A (此时硬件会在后台自动按Batch取数据并Compute)
-                config_a_weights(loop_idx);
+                else begin
+                    // ---- 比特重用架构 ----
+                    $display("\n------------------------------------------------------------------");
+                    $display(">>> GEMV %02d | Iteration: %0d / %0d <<<", gemv_idx, loop_idx + 1, LOOP_COUNT);
+                    
+                    if ((gemv_idx > 0) || (loop_idx > 0)) begin
+                        $display("[%0t] [GEMV %02d Loop %0d] Applying Hard Reset to DUT...", $time, gemv_idx, loop_idx);
+                        @(negedge clk);
+                        rst_n = 0;
+                        #100;
+                        rst_n = 1;
+                        #100;
+                    end
+                    
+                    // 每次复位后重新加载对应的 B 向量
+                    config_b_vector(gemv_idx);
+                    if (CU_TYPE == 2)  config_static_si(); 
+                    
+                    $display("[%0t] [GEMV %02d Loop %0d] Triggering System Start (Wait for URAM)...", $time, gemv_idx, loop_idx);
+                    
+                    tmp_cycle_start = global_cycle_cnt; // 记录包含Host写URAM及底层Compute在内的 Overall 总时间起点
+                    
+                    @(negedge clk);
+                    host_start = 1;
+                    @(negedge clk);
+                    host_start = 0;
 
-                // c) 阻塞等待全流程计算完成 (重叠掩盖的部分在这里收尾)
-                wait(system_done == 1'b1);
-                
-                // 计算系统运行(Compute)耗时并累加
-                prof_compute[gemv_idx] = prof_compute[gemv_idx] + (global_cycle_cnt - tmp_cycle_start);
-                
-                $display("[%0t] [GEMV %02d Loop %0d] System Done Signal Received!", $time, gemv_idx, loop_idx);
+                    config_a_weights(loop_idx);
+                    wait(system_done == 1'b1);
+                    
+                    prof_compute[gemv_idx] = prof_compute[gemv_idx] + (global_cycle_cnt - tmp_cycle_start);
+                    $display("[%0t] [GEMV %02d Loop %0d] System Done Signal Received!", $time, gemv_idx, loop_idx);
 
-                // d) 提取并累加保存本轮计算结果
-                read_and_save_results(loop_idx);
-                
-                // 等待一小段时间，确保状态稳定
-                #100; 
+                    read_and_save_results(loop_idx);
+                    
+                    #100; 
+              end
+
             end
-
             // 完成当前一个完整的 GEMV (4096行) 后，进行比对与统计
             compare_and_report(gemv_idx);
             
@@ -398,7 +469,7 @@ module tb_GEMV_Accelerator_Top;
         // 全部20次GEMV计算完毕后，打印全局 GEMM 测试报告
         print_gemm_summary();
         
-        // [新增] 打印详细的系统性能和用时报告
+        // 打印详细的系统性能和用时报告
         print_performance_profiling();
 
         #200;
@@ -410,6 +481,7 @@ module tb_GEMV_Accelerator_Top;
     // 7. 实例化 DUT
     // =========================================================================
     GEMV_Accelerator_Top #(
+        .CU_TYPE(CU_TYPE),
         .M(M),
         .N(N),
         .B_VEC_LEN(B_VEC_LEN),
@@ -435,6 +507,12 @@ module tb_GEMV_Accelerator_Top;
         .host_we_act(host_we_act),
         .host_addr_act(host_addr_act),
         .host_data_act(host_data_act),
+        .host_we_si(host_we_si),
+        .host_addr_si(host_addr_si),
+        .host_data_si(host_data_si),
+        .host_dsp_valid(host_dsp_valid),
+        .host_dsp_payload_wide(host_dsp_payload),
+        .host_start_accum_dsp(host_start_accum_dsp),
         .host_start_broadcast(host_start_broadcast),
         .broadcast_done(broadcast_done),
 

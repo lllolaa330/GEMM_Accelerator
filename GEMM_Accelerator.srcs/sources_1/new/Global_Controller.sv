@@ -9,7 +9,7 @@ module Global_Controller #(
     input  wire                               rst_n,
 
     input  wire                               start_system,
-    input  wire                               host_uram_batch_ready, // 新增输入
+    input  wire                               host_uram_batch_ready, 
     output reg                                system_done,
 
     output reg                                start_dma,

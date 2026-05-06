@@ -8,6 +8,7 @@ module GEMV_Accelerator_Top #(
     parameter OUT_WIDTH         = 32,
     parameter RAM_LATENCY       = 3,
     parameter PIPE_STAGES       = 2,
+    parameter CU_TYPE           = 0, // 0:Sliding, 1:Dynamic, 2:Static, 3:DSP
 
     parameter CU_NUMS        = B_VEC_LEN / N,   
     parameter BATCH_NUMS     = N / T_WIDTH,
@@ -28,10 +29,21 @@ module GEMV_Accelerator_Top #(
     input  wire [$clog2(BATCH_SIZE*BATCH_NUMS)-1:0] host_addr_uram,
     input  wire [WIDE_BUS_WIDTH-1:0]          host_data_uram,
 
-    // --- 主机配置 L1 BRAM 广播中心接口 (Vector B) ---
+    // --- 主机配置 L1 BRAM 广播中心接口 (Vector B & SI) ---
     input  wire                               host_we_act,
     input  wire [$clog2(B_VEC_LEN)-1:0]       host_addr_act,
     input  wire [7:0]                         host_data_act,
+
+    // --- Static CU 专用 SI 配置接口 ---
+    input  wire                               host_we_si,
+    input  wire [7:0]                         host_addr_si,
+    input  wire [T_WIDTH-1:0]                 host_data_si,
+    
+    // --- DSP Baseline 专用权重直通接口 ---
+    input  wire                               host_dsp_valid,
+    input  wire [CU_NUMS*4-1:0]               host_dsp_payload_wide,
+    input  wire                               host_start_accum_dsp, // DSP专用累加触发
+
     input  wire                               host_start_broadcast,
     output wire                               broadcast_done,
 
@@ -55,7 +67,9 @@ module GEMV_Accelerator_Top #(
     wire [$clog2(BATCH_NUMS)-1:0]        ctrl_compute_batch_idx;
     wire                                 compute_all_batch_done;
     wire                                 compute_all_matrix_done;
+
     wire                                 ctrl_start_accum;
+    wire                                 actual_start_accum;
     wire                                 ctrl_accum_done;
 
     // Mem -> Compute
@@ -94,7 +108,10 @@ module GEMV_Accelerator_Top #(
     // =========================================================================
     // 3. 计算阵列核心 (Data Plane)
     // =========================================================================
+    // 如果是DSP模式，由外部直接触发累加器，否则由内部控制器触发
+    assign actual_start_accum = (CU_TYPE == 3) ? host_start_accum_dsp : ctrl_start_accum;
     Compute_Core_Array #(
+        .CU_TYPE(CU_TYPE),
         .T_WIDTH(T_WIDTH), .M(M), .N(N), 
         .B_VEC_LEN(B_VEC_LEN), .CU_NUMS(CU_NUMS),
         .OUT_WIDTH(OUT_WIDTH)
@@ -102,15 +119,16 @@ module GEMV_Accelerator_Top #(
         .clk(clk), .rst_n(rst_n),
         
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
+        .host_we_si(host_we_si), .host_addr_si(host_addr_si), .host_data_si(host_data_si),
         .start_broadcast(host_start_broadcast), .broadcast_done(broadcast_done),
-        
+
         .ping_pong_sel(ctrl_ping_pong_sel),
         .dma_wr_en(mem_bram_wr_en), .dma_wr_addr(mem_bram_wr_addr), .dma_wr_data_wide(mem_bram_wr_data_wide),
         
         .start_compute(ctrl_start_compute), .current_k_offset(ctrl_compute_batch_idx),
         .all_batch_done(compute_all_batch_done), .all_matrix_done(compute_all_matrix_done),
         
-        .start_accum(ctrl_start_accum),.accum_done(ctrl_accum_done),
+        .start_accum(actual_start_accum),.accum_done(ctrl_accum_done),
         .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
     );
 

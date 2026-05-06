@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 
 module Compute_Core_Array #(
+    parameter CU_TYPE           = 0,     // 0:Sliding, 1:Dynamic, 2:Static, 3:DSP
     parameter T_WIDTH           = 8,
     parameter M                 = 256,
     parameter N                 = 256,
@@ -19,6 +20,11 @@ module Compute_Core_Array #(
     input  wire                               host_we_act,
     input  wire [$clog2(B_VEC_LEN)-1:0]       host_addr_act,
     input  wire [7:0]                         host_data_act,
+    input  wire                               host_we_si,
+    input  wire [7:0]                         host_addr_si,
+    input  wire [T_WIDTH-1:0]                 host_data_si,
+    input  wire                               host_dsp_valid,
+    input  wire [CU_NUMS*4-1:0]               host_dsp_payload_wide,
     input  wire                               start_broadcast,
     output wire                               broadcast_done,
 
@@ -41,10 +47,13 @@ module Compute_Core_Array #(
     input  wire [$clog2(M)-1:0]               out_rd_addr,
     output wire signed [OUT_WIDTH-1:0]        out_data        
 );
-
+    // 并行数据总线
     wire                          brd_cfg_we_b;
     wire [$clog2(N)-1:0]          brd_cfg_addr_b;
-    wire [CU_NUMS * 8 - 1 : 0]    brd_cfg_data_b_bus; // 并行数据总线
+    wire [CU_NUMS * 8 - 1 : 0]    brd_cfg_data_b_bus; 
+    wire                          brd_cfg_we_si;
+    wire [7:0]                    brd_cfg_addr_si;
+    wire [CU_NUMS * T_WIDTH - 1 : 0] brd_cfg_data_si_bus;
 
     wire [CU_NUMS-1:0] cu_batch_done_arr;
     wire [CU_NUMS-1:0] cu_matrix_done_arr;
@@ -57,13 +66,15 @@ module Compute_Core_Array #(
     ) u_broadcast_center (
         .clk(clk), .rst_n(rst_n),
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
-        .host_we_si(1'b0), .host_addr_si(8'd0), .host_data_si(8'd0), // SI暂不接入
+        .host_we_si(host_we_si), .host_addr_si(host_addr_si), .host_data_si(host_data_si),
         .start_broadcast(start_broadcast),
         .broadcast_done(broadcast_done),
         .cfg_we_b(brd_cfg_we_b),
         .cfg_addr_b(brd_cfg_addr_b),
         .cfg_data_b_bus(brd_cfg_data_b_bus),
-        .cfg_we_si(), .cfg_addr_si(), .cfg_data_si()  // SI暂不接入
+        .cfg_we_si(brd_cfg_we_si), 
+        .cfg_addr_si(brd_cfg_addr_si), 
+        .cfg_data_si(brd_cfg_data_si_bus)  
     );
 
     // 内部总线：连接 CU 和 Accumulator
@@ -75,6 +86,7 @@ module Compute_Core_Array #(
     generate
         for (i = 0; i < CU_NUMS; i = i + 1) begin : CU_INST
             CU_Wrapper #(
+                .CU_TYPE(CU_TYPE),
                 .M(M), .N(N), .T_WIDTH(T_WIDTH), 
                 .BATCH_SIZE(BATCH_SIZE), .BATCH_NUMS(BATCH_NUMS)
             ) u_cu_wrapper (
@@ -83,7 +95,8 @@ module Compute_Core_Array #(
                 .dma_wr_data(dma_wr_data_wide[i*A_PACKED_WIDTH +: A_PACKED_WIDTH]),
                 .start_compute(start_compute), .current_k_offset(current_k_offset),
                 .cfg_we_b(brd_cfg_we_b), .cfg_addr_b(brd_cfg_addr_b), .cfg_data_b(brd_cfg_data_b_bus[i*8 +: 8]),
-                
+                .cfg_we_si(brd_cfg_we_si), .cfg_addr_si(brd_cfg_addr_si), .cfg_data_si(brd_cfg_data_si_bus[i*T_WIDTH +: T_WIDTH]),
+                .dsp_a_valid(host_dsp_valid),.dsp_a_payload(host_dsp_payload_wide[i*4 +: 4]),
                 // --- 被 Accumulator 接管读取权 ---
                 .out_rd_en(internal_rd_en),
                 .out_rd_addr(internal_rd_addr),
