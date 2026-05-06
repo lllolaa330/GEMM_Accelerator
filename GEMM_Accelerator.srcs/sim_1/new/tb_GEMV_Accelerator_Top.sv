@@ -5,7 +5,7 @@ module tb_GEMV_Accelerator_Top;
     // =========================================================================
     // 1. 参数与配置 
     // =========================================================================
-    parameter CU_TYPE        = 1;                       // 0:Sliding, 1:Dynamic, 2:Static, 3:DSP
+    parameter CU_TYPE        = 3;                       // 0:Sliding, 1:Dynamic, 2:Static, 3:DSP
     parameter WEIGHT_TOTAL_ROW = 1024;                  // 完整的权重总行数
     parameter B_VEC_LEN      = 4096;                    // 完整的权重总列数 也是 B向量的长度
     parameter M              = 256;                     // 底层 CU 计算的行数 (每次处理256行)
@@ -207,7 +207,7 @@ module tb_GEMV_Accelerator_Top;
             // 读取另外准备的 DSP 4bit 完整权重
             for (cu = 0; cu < CU_NUMS; cu = cu + 1) begin
                 file_idx = l_idx * CU_NUMS + cu; 
-                $readmemh($sformatf("%s/a_dsp/k_proj/a_%04d.txt", base_dir, file_idx), temp_mem_dsp);
+                $readmemb($sformatf("%s/a_dsp/k_proj/a_%04d.txt", base_dir, file_idx+1), temp_mem_dsp);
                 for (j = 0; j < (M*N); j = j + 1) begin
                     shadow_mem_dsp[cu][j] = temp_mem_dsp[j];
                 end

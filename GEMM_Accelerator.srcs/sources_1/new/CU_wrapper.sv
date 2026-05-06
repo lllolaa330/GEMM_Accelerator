@@ -66,7 +66,7 @@ module CU_Wrapper #(
     reg                               read_active; // 标识地址生成器是否在工作
     reg                               a_valid_d1;  // 延迟 1 拍，对齐 BRAM 读出数据
 
-    // =========================================================================
+    /*// =========================================================================
     // 逻辑 1: CU 自动地址发生器 (AGU)
     // =========================================================================
     // 当收到 start_compute 脉冲，开始连续生成 0 ~ BATCH_SIZE-1 的地址去读 BRAM
@@ -99,6 +99,77 @@ module CU_Wrapper #(
             a_valid_d1 <= cu_rd_en;
         end
     end
+        */
+    // =========================================================================
+    // 逻辑 1 & 2: CU 自动地址发生器与防丢数 FIFO (完美解决 Latency vs Ready)
+    // =========================================================================
+    wire cu_ready; // 内部握手信号
+
+    // 定义 2-Deep FWFT FIFO
+    reg [A_PACKED_WIDTH-1:0] fifo_ram [0:1];
+    reg [1:0]                fifo_count;
+    reg                      wr_ptr, rd_ptr;
+
+    wire fifo_full   = (fifo_count == 2);
+    wire fifo_empty  = (fifo_count == 0);
+    wire fifo_alfull = (fifo_count == 1);
+    
+    // 给底层 CU 的最终握手信号与数据
+    wire                          final_a_valid   = !fifo_empty;
+    wire [A_PACKED_WIDTH-1:0]     final_a_payload = fifo_ram[rd_ptr];
+    wire                          fifo_rd         = final_a_valid && cu_ready;
+    wire                          fifo_wr         = a_valid_d1; // 延迟一拍的 BRAM 读使能
+
+    // AGU 读使能：只要 FIFO 没满，且不在"只剩1个空位但当前没有读出"的边缘状态，就可以继续读
+    wire space_avail = !fifo_full && !(fifo_alfull && !fifo_rd);
+    assign cu_rd_en = read_active && space_avail;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            read_active <= 1'b0;
+            cu_rd_addr  <= 0;
+        end else if (start_compute) begin
+            read_active <= 1'b1;
+            cu_rd_addr  <= 0;
+        end else if (cu_rd_en) begin
+            if (cu_rd_addr == BATCH_SIZE - 1) begin
+                read_active <= 1'b0; // 读完一个 Batch 停止
+            end else begin
+                cu_rd_addr <= cu_rd_addr + 1'b1;
+            end
+        end
+    end
+
+    // 统一生成 batch_done：AGU 成功发出当前 Batch 最后一笔读请求即代表读取完毕，交出总线控制权
+    assign batch_done = (cu_rd_en && (cu_rd_addr == BATCH_SIZE - 1));
+
+    // BRAM 读延迟对齐 -> 转化为 FIFO 的写入使能
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) a_valid_d1 <= 1'b0;
+        else        a_valid_d1 <= cu_rd_en;
+    end
+
+    // FIFO 本体逻辑
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            fifo_count <= 0;
+            wr_ptr <= 0;
+            rd_ptr <= 0;
+        end else begin
+            if (fifo_wr && !fifo_rd)
+                fifo_count <= fifo_count + 1;
+            else if (!fifo_wr && fifo_rd)
+                fifo_count <= fifo_count - 1;
+                
+            if (fifo_wr) begin
+                fifo_ram[wr_ptr] <= bram_dout;
+                wr_ptr <= ~wr_ptr;
+            end
+            if (fifo_rd) begin
+                rd_ptr <= ~rd_ptr;
+            end
+        end
+    end
 
     // =========================================================================
     // 例化 1: Ping-Pong BRAM (权重局部缓存)
@@ -123,7 +194,7 @@ module CU_Wrapper #(
     );
 
     // =========================================================================
-    // 例化 2: 核心计算逻辑 SlidingWindow_CU
+    // 例化 2: 核心计算逻辑 CU
     // =========================================================================
     generate
         if (CU_TYPE == 0) begin : GEN_SLIDING
@@ -136,7 +207,8 @@ module CU_Wrapper #(
                 .clk(clk), .rst_n(rst_n),
                 .cfg_we_b(cfg_we_b), .cfg_addr_b(cfg_addr_b), .cfg_data_b(cfg_data_b),
                 .a_valid(a_valid_d1), .a_payload(bram_dout), .k_offset(current_k_offset),
-                .batch_done(batch_done), .matrix_done(matrix_done),
+                //.batch_done(batch_done), 
+                .matrix_done(matrix_done),
                 .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
             );
         end 
@@ -149,10 +221,10 @@ module CU_Wrapper #(
                 .cfg_we_b(cfg_we_b), .cfg_addr_b(cfg_addr_b), .cfg_data_b(cfg_data_b),
                 .a_valid(a_valid_d1), .a_payload(bram_dout), .k_offset(current_k_offset),
                 .unit_ready(cu_ready),
+                //.batch_done(batch_done),
                 .matrix_done(matrix_done),
                 .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
             );
-            assign batch_done = 1'b0; //无此信号, 暂时置0
         end 
         else if (CU_TYPE == 2) begin : GEN_STATIC
             Static_Scoreboard_CU #(
@@ -164,10 +236,10 @@ module CU_Wrapper #(
                 .cfg_we_si(cfg_we_si), .cfg_addr_si(cfg_addr_si), .cfg_data_si(cfg_data_si),
                 .a_valid(a_valid_d1), .a_payload(bram_dout), .k_offset(current_k_offset),
                 .unit_ready(cu_ready),
+                //.batch_done(batch_done),
                 .matrix_done(matrix_done),
                 .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
             );
-            assign batch_done = 1'b0; //无此信号, 暂时置0
         end 
         else if (CU_TYPE == 3) begin : GEN_DSP
             assign cu_ready = 1'b1;

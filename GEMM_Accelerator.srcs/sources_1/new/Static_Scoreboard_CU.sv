@@ -32,6 +32,7 @@ module Static_Scoreboard_CU #(
     input  wire [A_PACKED_WIDTH-1:0]     a_payload,
     input  wire [OFFSET_ADDR_WIDTH-1:0]  k_offset,
     output wire                          unit_ready,
+    output wire                          batch_done,
     output wire                          matrix_done,
 
     // --- Output Interface ---
@@ -43,6 +44,14 @@ module Static_Scoreboard_CU #(
     // =========================================================================
     // 信号预声明
     // =========================================================================
+
+    // --- RAM/BANK 预定义参数 ---
+    localparam NUM_B_BANKS    = T_WIDTH;                   // Bank数量必须等于T_WIDTH以保证并行读
+    localparam B_BANK_DEPTH   = N / T_WIDTH;               // 每个Bank的深度
+    localparam B_BANK_BITS    = $clog2(NUM_B_BANKS);       // Bank选择位宽
+    localparam B_DEPTH_BITS   = $clog2(B_BANK_DEPTH);      // 深度地址位宽
+    localparam TOTAL_PAYLOADS = BATCH_NUMS * BATCH_SIZE;   // 理论有效载荷总数
+
     reg                         h_input_sel;
     reg                         h_output_sel; 
     reg [OFFSET_ADDR_WIDTH-1:0] h0_k_offset_reg;
@@ -96,7 +105,17 @@ module Static_Scoreboard_CU #(
     reg signed [PSUM_WIDTH-1:0]   r_s3_PPE_result; 
 
     // Stage 3: APE 计算
-    wire signed [OUT_WIDTH-1:0]  s3_APE_result;
+    wire                          s3_batch_last_data;
+    wire                          s3_matrix_last_data;
+    wire signed [PSUM_WIDTH-1:0]  s3_APE_result;
+
+    // --- Batch Done 计算逻辑 ---
+    (* dont_touch = "true" *) reg [$clog2(BATCH_SIZE+1)-1:0] s3_batch_cnt;
+    reg [7:0] batch_done_shift;
+
+    // --- Matrix Done 计算逻辑 ---
+    (* dont_touch = "true" *) reg [$clog2(TOTAL_PAYLOADS+1)-1:0] s3_matrix_cnt;
+    reg [7:0] matrix_done_shift;
 
     // =========================================================================
     // Sorter 的 Ping-Pong 控制逻辑
@@ -285,12 +304,7 @@ module Static_Scoreboard_CU #(
     // =========================================================================
     // Stage 2 : Vector B Storage
     // =========================================================================
-    localparam MAX_B_ELEMENTS = N;                         // B向量最大容量
-    localparam NUM_B_BANKS    = T_WIDTH;                   // Bank数量必须等于T_WIDTH以保证并行读
-    localparam B_BANK_DEPTH   = MAX_B_ELEMENTS / T_WIDTH;  // 每个Bank的深度
-    localparam B_DEPTH_BITS   = $clog2(B_BANK_DEPTH);      // 深度地址位宽 (比如深度8 -> 3位)
-    localparam B_BANK_BITS    = $clog2(NUM_B_BANKS);       // Bank选择位宽 (比如8个Bank -> 3位)
-    
+
     genvar gi;
     generate
         for (gi = 0; gi < NUM_B_BANKS; gi = gi + 1) begin : gen_b_banks
@@ -403,34 +417,46 @@ module Static_Scoreboard_CU #(
     );
 
     // =========================================================================
-    // Matrix Done Indicator
+    // Batch & Matrix Done Indicator Logic (脉冲产生与自动归零逻辑)
     // =========================================================================
-    // 整个矩阵的理论有效载荷总数
-    localparam TOTAL_PAYLOADS = BATCH_NUMS * BATCH_SIZE;
     
-    reg[31:0] s3_processed_cnt;
-    reg [7:0] done_shift;
+    // 判定当前写入的是否是该批次/矩阵的"最后一个"数据
+    assign s3_batch_last_data  = (r_s3_valid && (s3_batch_cnt == BATCH_SIZE - 1));
+    assign s3_matrix_last_data = (r_s3_valid && (s3_matrix_cnt == TOTAL_PAYLOADS - 1));
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            s3_processed_cnt <= 0;
-            done_shift       <= 8'd0;
+            s3_batch_cnt      <= 0;
+            batch_done_shift  <= 8'd0;            
+            s3_matrix_cnt     <= 0;
+            matrix_done_shift <= 8'd0;
         end else begin
-            // 统计成功进入 Stage 3 (APE) 的有效数据个数
+            // --- 1. 批次计数器 (Batch) ---
             if (r_s3_valid) begin
-                s3_processed_cnt <= s3_processed_cnt + 1;
+                if (s3_batch_cnt == BATCH_SIZE - 1)
+                    s3_batch_cnt <= 0; // 到达批次末尾，自动归零，迎接下一批次
+                else
+                    s3_batch_cnt <= s3_batch_cnt + 1;
             end
 
-            // 当全部数据都送入 APE 后，启动移位打拍，等待 APE 计算并写入 RAM 完全结束
-            if (s3_processed_cnt >= TOTAL_PAYLOADS) begin
-                done_shift <= {done_shift[6:0], 1'b1};
-            end else begin
-                done_shift <= 8'd0;
+            // --- 2. 矩阵计数器 (Matrix) ---
+            if (r_s3_valid) begin
+                if (s3_matrix_cnt == TOTAL_PAYLOADS - 1)
+                    s3_matrix_cnt <= 0; // 整个矩阵算完，自动归零
+                else
+                    s3_matrix_cnt <= s3_matrix_cnt + 1;
             end
+
+            // --- 3. 完成信号打拍延迟 (等待 APE 落盘) ---
+            // 每次最后一个数据进入 APE 时，向移位寄存器推入一个 '1'
+            // 8个周期后，顶层会产生一个维持仅仅 1 个时钟周期的脉冲
+            batch_done_shift  <= {batch_done_shift[6:0],  s3_batch_last_data};
+            matrix_done_shift <= {matrix_done_shift[6:0], s3_matrix_last_data};
         end
     end
 
-    // 延迟 8 个周期后拉高，绝对确保流水线的最后一拍已经安全落盘
-    assign matrix_done = done_shift[7];
+    // 提取移位寄存器的最高位，产生单拍脉冲 (Pulse)
+    assign batch_done  = batch_done_shift[7];
+    assign matrix_done = matrix_done_shift[7];
 
 endmodule
