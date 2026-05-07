@@ -28,10 +28,10 @@ module Global_Controller #(
 
     localparam [3:0] 
         IDLE            = 4'd0,
-        WAIT_URAM_PRE   = 4'd1, // 新增：预装载前等待首个Batch写入URAM
+        WAIT_URAM_PRE   = 4'd1, // 预装载前等待首个Batch写入URAM
         PRELOAD_DMA     = 4'd2, 
         WAIT_PRE        = 4'd3,
-        CHECK_URAM_SYNC = 4'd4, // 新增：运行中检查URAM是否有下一个Batch
+        CHECK_URAM_SYNC = 4'd4, // 运行中检查URAM是否有下一个Batch
         SYNC_RUN        = 4'd5, 
         WAIT_SYNC       = 4'd6,
         DRAIN           = 4'd7, 
@@ -41,7 +41,7 @@ module Global_Controller #(
 
     reg [3:0] state, next_state;
     reg [$clog2(BATCH_NUMS):0] batch_cnt;  // 拓宽1位，能够容纳 BATCH_NUMS (32) 这个数值
-    reg [$clog2(BATCH_NUMS):0] uram_ready_cnt; // 新增：追踪Host写完了几个Batch
+    reg [$clog2(BATCH_NUMS):0] uram_ready_cnt; // 追踪Host写完了几个Batch
     // 用于独立捕获异步脉冲的 flags
     reg dma_ready_flag;
     reg cmp_ready_flag;
@@ -54,7 +54,7 @@ module Global_Controller #(
         else        state <= next_state;
     end
 
-    // 新增：维护 uram_ready_cnt 的 always 块
+    // 维护 uram_ready_cnt 的 always 块
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             uram_ready_cnt <= 0;

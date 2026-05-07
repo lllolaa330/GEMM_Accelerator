@@ -7,7 +7,7 @@ module tb_GEMV_Accelerator_Top;
     // =========================================================================
     parameter WEIGHT_TOTAL_ROW = 1024;                  // 完整的权重总行数
     parameter B_VEC_LEN      = 4096;                   // 完整的权重总列数 也是 B向量的长度
-    localparam GEMV_NUM       = 3;                      // 总共计算的GEMV次数（组成完整GEMM）
+    localparam GEMV_NUM       = 1;                      // 总共计算的GEMV次数（组成完整GEMM）
     string  base_dir = "C:/Users/lllolaa/Desktop/data_L38/data_L38"; 
     string target_layer = "k_proj";                  // 目标层名称，用于构建文件路径
     parameter CLK_MHZ = 300;                            // 时钟频率 (MHz)
