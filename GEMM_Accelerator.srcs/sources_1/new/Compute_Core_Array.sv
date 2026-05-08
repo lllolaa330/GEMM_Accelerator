@@ -19,11 +19,14 @@ module Compute_Core_Array #(
     input  wire                               host_we_act,
     input  wire [$clog2(B_VEC_LEN)-1:0]       host_addr_act,
     input  wire [7:0]                         host_data_act,
+    input  wire                               start_broadcast_act,
+    output wire                               broadcast_done_act,
+
     input  wire                               host_we_si,
     input  wire [T_WIDTH-1:0]                 host_addr_si, 
     input  wire [T_WIDTH-1:0]                 host_data_si,
-    input  wire                               start_broadcast,
-    output wire                               broadcast_done,
+    input  wire                               start_broadcast_si,
+    output wire                               broadcast_done_si,
 
     // DMA 数据
     input  wire                               ping_pong_sel,
@@ -32,6 +35,7 @@ module Compute_Core_Array #(
     input  wire [WIDE_BUS_WIDTH-1:0]          dma_wr_data_wide,
 
     // 计算控制
+    input  wire                               start_dma,
     input  wire                               start_compute,
     input  wire [$clog2(BATCH_NUMS)-1:0]      current_k_offset,
     output wire                               all_batch_done,
@@ -62,25 +66,25 @@ module Compute_Core_Array #(
     reg [CU_NUMS-1:0] cu_matrix_done_arr_flag;
     reg [CU_NUMS-1:0] cu_cu_ready_arr_flag;
 
-    reg               batch_soft_rst;
-    reg               dma_wr_en_d1;
+    // reg               batch_soft_rst;
+    // reg               dma_wr_en_d1;
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            batch_soft_rst <= 1'b0;
-            dma_wr_en_d1   <= 1'b0;
-        end else begin
-            dma_wr_en_d1   <= dma_wr_en;
-            batch_soft_rst <= dma_wr_en & ~dma_wr_en_d1; // dma_wr_en 从0变1时产生一个周期的软复位信号
-        end
-    end
+    // always @(posedge clk or negedge rst_n) begin
+    //     if (!rst_n) begin
+    //         batch_soft_rst <= 1'b0;
+    //         dma_wr_en_d1   <= 1'b0;
+    //     end else begin
+    //         dma_wr_en_d1   <= dma_wr_en;
+    //         batch_soft_rst <= dma_wr_en & ~dma_wr_en_d1; // dma_wr_en 从0变1时产生一个周期的软复位信号
+    //     end
+    // end
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             cu_batch_done_arr_flag  <= {CU_NUMS{1'b0}};
             cu_matrix_done_arr_flag <= {CU_NUMS{1'b0}};
             cu_cu_ready_arr_flag    <= {CU_NUMS{1'b0}};
-        end else if (batch_soft_rst) begin
+        end else if (start_dma) begin
             cu_batch_done_arr_flag  <= {CU_NUMS{1'b0}};
             cu_cu_ready_arr_flag    <= {CU_NUMS{1'b0}};
         end else begin
@@ -103,17 +107,23 @@ module Compute_Core_Array #(
     assign all_cu_ready    = &cu_cu_ready_arr_flag;
 
     Act_SI_Broadcast_Buffer #(
-        .N(N), .B_VEC_LEN(B_VEC_LEN)
+        .N(N), .B_VEC_LEN(B_VEC_LEN),
+        .T_WIDTH(T_WIDTH), .B_DATA_WIDTH(8)
     ) u_broadcast_center (
         .clk(clk), .rst_n(rst_n),
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
         .host_we_si(host_we_si), .host_addr_si(host_addr_si), .host_data_si(host_data_si), 
-        .start_broadcast(start_broadcast),
-        .broadcast_done(broadcast_done),
+        .start_broadcast_b(start_broadcast_act),
+        .broadcast_done_b(broadcast_done_act),
+        .start_broadcast_si(start_broadcast_si),
+        .broadcast_done_si(broadcast_done_si),
+        
         .cfg_we_b(brd_cfg_we_b),
         .cfg_addr_b(brd_cfg_addr_b),
         .cfg_data_b_bus(brd_cfg_data_b_bus),
-        .cfg_we_si(brd_cfg_we_si), .cfg_addr_si(brd_cfg_addr_si), .cfg_data_si(brd_cfg_data_si)  
+        .cfg_we_si(brd_cfg_we_si), 
+        .cfg_addr_si(brd_cfg_addr_si), 
+        .cfg_data_si(brd_cfg_data_si)  
     );
 
     // 内部总线：连接 CU 和 Accumulator

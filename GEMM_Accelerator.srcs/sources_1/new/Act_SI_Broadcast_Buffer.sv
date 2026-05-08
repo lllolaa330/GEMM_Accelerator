@@ -2,11 +2,11 @@
 
 module Act_SI_Broadcast_Buffer #(
     parameter N            = 256,
-    parameter B_VEC_LEN    = 11008,                // 11008 = 256 * 43 (共需43个CU)
-    parameter CU_NUMS      = B_VEC_LEN / N,
+    parameter B_VEC_LEN    = 4096,                
     parameter T_WIDTH      = 8,
-    parameter SI_SIZE      = 2 ** T_WIDTH,
     parameter B_DATA_WIDTH = 8,
+    parameter CU_NUMS      = B_VEC_LEN / N,
+    parameter SI_SIZE      = 2 ** T_WIDTH,
     parameter ADDR_W       = $clog2(N + 1)
 )(
     input  wire                          clk,
@@ -22,8 +22,10 @@ module Act_SI_Broadcast_Buffer #(
     input  wire [T_WIDTH-1:0]            host_data_si,
 
     // --- 广播控制接口 ---
-    input  wire                          start_broadcast,
-    output reg                           broadcast_done,
+    input  wire                          start_broadcast_b,
+    output reg                           broadcast_done_b,
+    input  wire                          start_broadcast_si,
+    output reg                           broadcast_done_si,
 
     // --- 向量 B 广播总线 (并行宽总线)---
     output reg                                   cfg_we_b,
@@ -35,10 +37,17 @@ module Act_SI_Broadcast_Buffer #(
     output reg  [T_WIDTH-1:0]                    cfg_addr_si,    
     output reg  [T_WIDTH-1:0]                    cfg_data_si     // 共享一份si数据，所有CU同时接收
 );
+
     // =========================================================================
-    // 1. 内部存储器
+    // 0. 内部计数器信号定义 (用于替换原有的 brd_cnt)
     // =========================================================================
-    // Vector B 内存：分成 CU_NUMS 份，每份 N 字节，分别对应一个 CU 的广播数据
+    reg [ADDR_W-1:0]  cnt_b;
+    reg [T_WIDTH:0]   cnt_si;
+
+    // =========================================================================
+    // 1. 内部存储器及数据输出逻辑 (读延迟1拍，与地址输出对齐)
+    // =========================================================================
+    // Vector B 内存
     genvar m;
     generate
         for (m = 0; m < CU_NUMS; m = m + 1) begin : B_MEM_GEN
@@ -51,105 +60,130 @@ module Act_SI_Broadcast_Buffer #(
                     sub_act_mem[host_addr_act[$clog2(N)-1:0]] <= host_data_act;
             end
 
-            // 数据输出 1拍延迟
+            // 数据输出 1拍延迟 (利用内部计数器读取)
             always @(posedge clk) begin
-                cfg_data_b_bus[m*B_DATA_WIDTH +: B_DATA_WIDTH] <= sub_act_mem[brd_cnt_b[$clog2(N)-1:0]];
+                cfg_data_b_bus[m*B_DATA_WIDTH +: B_DATA_WIDTH] <= sub_act_mem[cnt_b[$clog2(N)-1:0]];
             end
         end
     endgenerate
 
-    // SI 内存：SI_SIZE 字节，所有 CU 共享一份 SI 数据
+    // SI 内存
     (* ram_style = "block" *) reg [T_WIDTH-1:0] si_mem [0:SI_SIZE-1];
-    // 数据输出 1拍延迟
-    always @(posedge clk) if (host_we_si) si_mem[host_addr_si] <= host_data_si;
-    always @(posedge clk) cfg_data_si <= si_mem[brd_cnt_si];
+    always @(posedge clk) begin
+        if (host_we_si) si_mem[host_addr_si] <= host_data_si;
+    end
+    always @(posedge clk) begin
+        cfg_data_si <= si_mem[cnt_si[T_WIDTH-1:0]];
+    end
 
     // =========================================================================
-    // 2. 广播状态机与对齐逻辑
+    // 2. 独立的 Vector B 广播状态机
     // =========================================================================
-    reg [1:0] state;
-    localparam IDLE         = 2'd0;
-    localparam BROADCAST    = 2'd1;
-    localparam WAIT_LAST    = 2'd2; 
-    localparam DONE         = 2'd3;
+    localparam S_B_IDLE = 2'd0;
+    localparam S_B_WORK = 2'd1;
+    localparam S_B_DONE = 2'd2;
 
-    reg [ADDR_W-1:0]  brd_cnt_b;
-    reg [T_WIDTH:0]   brd_cnt_si;
+    reg [1:0] state_b, next_state_b;
 
-    reg b_done_flag;  // Vector B 广播完成标志
-    reg si_done_flag; // SI 广播完成标志
+    // FSM_B 状态寄存器
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) state_b <= S_B_IDLE;
+        else        state_b <= next_state_b;
+    end
 
+    // FSM_B 状态转移逻辑
+    always @(*) begin
+        next_state_b = state_b; // 默认保持
+        case (state_b)
+            S_B_IDLE: if (start_broadcast_b) next_state_b = S_B_WORK;
+            S_B_WORK: if (cnt_b == N - 1)    next_state_b = S_B_DONE;
+            S_B_DONE:                        next_state_b = S_B_IDLE;
+            default:                         next_state_b = S_B_IDLE;
+        endcase
+    end
+
+    // FSM_B 输出逻辑与计数器
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state          <= IDLE;
-            brd_cnt_b      <= 1'b0;
-            brd_cnt_si     <= 1'b0;
-            broadcast_done <= 1'b0;
-            cfg_we_b       <= 1'b0; 
-            cfg_addr_b     <= 1'b0;
-            cfg_we_si      <= 1'b0; 
-            cfg_addr_si    <= 1'b0; 
-            cfg_data_si    <= 1'b0;
-            b_done_flag    <= 1'b0;
-            si_done_flag   <= 1'b0;
+            cnt_b            <= 0;
+            cfg_we_b         <= 1'b0;
+            cfg_addr_b       <= 0;
+            broadcast_done_b <= 1'b0;
         end else begin
-            case (state)
-                IDLE: begin
-                    broadcast_done <= 1'b0;
-                    cfg_we_b       <= 1'b0;
-                    cfg_we_si      <= 1'b0;
-                    brd_cnt_b      <= 1'b0;
-                    brd_cnt_si     <= 1'b0;
-                    b_done_flag    <= 1'b0;
-                    si_done_flag   <= 1'b0;
-                    if (start_broadcast) state <= BROADCAST;
+            case (state_b)
+                S_B_IDLE: begin
+                    cnt_b            <= 0;
+                    cfg_we_b         <= 1'b0;
+                    broadcast_done_b <= 1'b0;
                 end
-                
-                BROADCAST: begin                    
-                    // Vector B 控制
-                    if (brd_cnt_b < N) begin
-                        cfg_we_b   <= 1'b1;
-                        cfg_addr_b <= brd_cnt_b[$clog2(N)-1:0];
-                    end else begin
-                        cfg_we_b   <= 1'b0;
-                    end
-
-                    // SI 向量控制与数据
-                    if (brd_cnt_si < SI_SIZE) begin
-                        cfg_we_si   <= 1'b1;
-                        cfg_addr_si <= brd_cnt_si[T_WIDTH-1:0];
-                    end else begin
-                        cfg_we_si   <= 1'b0;
-                    end
-                    
-                    if (brd_cnt_b == N - 1) begin
-                        b_done_flag <= 1'b1; // Vector B 最后一拍数据正在被广播
-                    end
-                    if (brd_cnt_si == SI_SIZE - 1) begin
-                        si_done_flag <= 1'b1; // SI 最后一拍数据正在被广播
-                    end
-
-                    // 状态跳转
-                    if (b_done_flag && si_done_flag) begin
-                        state <= WAIT_LAST;
-                    end else begin
-                        brd_cnt_b <= brd_cnt_b + 1'b1;
-                        brd_cnt_si <= brd_cnt_si + 1'b1;
-                    end
+                S_B_WORK: begin
+                    cnt_b      <= cnt_b + 1'b1;
+                    cfg_we_b   <= 1'b1;
+                    cfg_addr_b <= cnt_b[$clog2(N)-1:0]; // cfg_addr 与 延迟一拍的RAM cfg_data 完美对齐
                 end
-
-                WAIT_LAST: begin
-                    cfg_we_b  <= 1'b0;
-                    cfg_we_si <= 1'b0;
-                    state     <= DONE;
+                S_B_DONE: begin
+                    cfg_we_b         <= 1'b0;
+                    cfg_addr_b       <= 1'b0; 
+                    cfg_data_b_bus   <= 0;
+                    broadcast_done_b <= 1'b1;           // 产生一拍的 Done 信号
                 end
-                
-                DONE: begin
-                    broadcast_done <= 1'b1;
-                    state          <= IDLE;
-                end
-                default: state <= IDLE;
+                default: ;
             endcase
         end
     end
+
+    // =========================================================================
+    // 3. 独立的 SI 广播状态机 (标准三段式)
+    // =========================================================================
+    localparam S_SI_IDLE = 2'd0;
+    localparam S_SI_WORK = 2'd1;
+    localparam S_SI_DONE = 2'd2;
+
+    reg [1:0] state_si, next_state_si;
+
+    // FSM_SI 状态寄存器
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) state_si <= S_SI_IDLE;
+        else        state_si <= next_state_si;
+    end
+
+    // FSM_SI 状态转移逻辑
+    always @(*) begin
+        next_state_si = state_si; // 默认保持
+        case (state_si)
+            S_SI_IDLE: if (start_broadcast_si) next_state_si = S_SI_WORK;
+            S_SI_WORK: if (cnt_si == SI_SIZE - 1) next_state_si = S_SI_DONE;
+            S_SI_DONE:                            next_state_si = S_SI_IDLE;
+            default:                              next_state_si = S_SI_IDLE;
+        endcase
+    end
+
+    // FSM_SI 输出逻辑与计数器
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            cnt_si            <= 0;
+            cfg_we_si         <= 1'b0;
+            cfg_addr_si       <= 0;
+            broadcast_done_si <= 1'b0;
+        end else begin
+            case (state_si)
+                S_SI_IDLE: begin
+                    cnt_si            <= 0;
+                    cfg_we_si         <= 1'b0;
+                    broadcast_done_si <= 1'b0;
+                end
+                S_SI_WORK: begin
+                    cnt_si      <= cnt_si + 1'b1;
+                    cfg_we_si   <= 1'b1;
+                    cfg_addr_si <= cnt_si[T_WIDTH-1:0]; // 同理，保证地址输出与RAM读出数据在同一拍
+                end
+                S_SI_DONE: begin
+                    cfg_we_si         <= 1'b0;
+                    broadcast_done_si <= 1'b1;          // 产生一拍的 Done 信号
+                end
+                default: ;
+            endcase
+        end
+    end
+
 endmodule

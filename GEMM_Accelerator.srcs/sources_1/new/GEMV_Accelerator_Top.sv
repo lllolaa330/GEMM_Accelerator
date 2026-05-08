@@ -32,11 +32,15 @@ module GEMV_Accelerator_Top #(
     input  wire                               host_we_act,
     input  wire [$clog2(B_VEC_LEN)-1:0]       host_addr_act,
     input  wire [7:0]                         host_data_act,
+    input  wire                               host_start_broadcast_act,
+    output wire                               broadcast_done_act,
+
+    // --- 主机配置 L1 BRAM 广播中心接口 (Vector B) ---
     input  wire                               host_we_si,
     input  wire [T_WIDTH-1:0]                 host_addr_si,
-    input  wire [T_WIDTH-1:0]                 host_data_si,
-    input  wire                               host_start_broadcast,
-    output wire                               broadcast_done,
+    input  wire [T_WIDTH:0]                   host_data_si,
+    input  wire                               host_start_broadcast_si,
+    output wire                               broadcast_done_si,
 
     // --- 结果读取接口 ---
     input  wire                               out_rd_en,
@@ -108,12 +112,14 @@ module GEMV_Accelerator_Top #(
         .clk(clk), .rst_n(rst_n),
         
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
+        .start_broadcast_act(host_start_broadcast_act), .broadcast_done_act(broadcast_done_act),
         .host_we_si(host_we_si), .host_addr_si(host_addr_si), .host_data_si(host_data_si),
-        .start_broadcast(host_start_broadcast), .broadcast_done(broadcast_done),
+        .start_broadcast_si(host_start_broadcast_si), .broadcast_done_si(broadcast_done_si),
         
         .ping_pong_sel(ctrl_ping_pong_sel),
         .dma_wr_en(mem_bram_wr_en), .dma_wr_addr(mem_bram_wr_addr), .dma_wr_data_wide(mem_bram_wr_data_wide),
         
+        .start_dma(ctrl_start_dma),
         .start_compute(ctrl_start_compute), .current_k_offset(ctrl_compute_batch_idx),
         .all_batch_done(compute_all_batch_done), 
         .all_matrix_done(compute_all_matrix_done),

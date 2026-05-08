@@ -48,11 +48,14 @@ module tb_GEMV_Accelerator_Top;
     reg                               host_we_act;
     reg [$clog2(B_VEC_LEN)-1:0]       host_addr_act;
     reg [7:0]                         host_data_act;
+    reg                               host_start_broadcast_act;
+    wire                              broadcast_done_act;
+
     reg                               host_we_si;
     reg [T_WIDTH-1:0]                 host_addr_si;
     reg [T_WIDTH-1:0]                 host_data_si;
-    reg                               host_start_broadcast;
-    wire                              broadcast_done;
+    reg                               host_start_broadcast_si;
+    wire                              broadcast_done_si;
 
     // 结果读取接口
     reg                               out_rd_en;
@@ -107,7 +110,8 @@ module tb_GEMV_Accelerator_Top;
             host_we_uram = 0; host_addr_uram = 0; host_data_uram = 0;
             host_we_act = 0; host_addr_act = 0; host_data_act = 0;
             host_we_si = 0; host_addr_si = 0; host_data_si = 0;
-            host_start_broadcast = 0;
+            host_start_broadcast_act = 0;
+            host_start_broadcast_si = 0;
             out_rd_en = 0; out_rd_addr = 0;
 
             total_gemm_err_cnt = 0;
@@ -157,11 +161,11 @@ module tb_GEMV_Accelerator_Top;
             // 统计 Act：BRAM 广播到底层 CU 用时
             start_cc = global_cycle_cnt;
             @(negedge clk);
-            host_start_broadcast = 1;
+            host_start_broadcast_act = 1;
             @(negedge clk);
-            host_start_broadcast = 0;
+            host_start_broadcast_act = 0;
             
-            wait(broadcast_done == 1'b1);
+            wait(broadcast_done_act == 1'b1);
             prof_act_bram_to_cu[g_idx] = prof_act_bram_to_cu[g_idx] + (global_cycle_cnt - start_cc);
 
             $display("[%0t] Vector B Broadcast Done for GEMV %0d.", $time, g_idx);
@@ -173,7 +177,7 @@ module tb_GEMV_Accelerator_Top;
         integer start_cc; // 局部时间记录
         begin
             $display("[%0t] Loading SI for all CUs...", $time);
-            si_path = $sformatf("%s/si.txt", base_dir);
+            si_path = $sformatf("%s/SI.txt", base_dir);
             $readmemh(si_path, mem_si);
             
             // 统计 SI：外部写入 BRAM 用时
@@ -191,11 +195,11 @@ module tb_GEMV_Accelerator_Top;
             // 统计 SI：BRAM 广播到底层 CU 用时
             start_cc = global_cycle_cnt;
             @(negedge clk);
-            host_start_broadcast = 1;
+            host_start_broadcast_si = 1;
             @(negedge clk);
-            host_start_broadcast = 0;
+            host_start_broadcast_si = 0;
             
-            wait(broadcast_done == 1'b1);
+            wait(broadcast_done_si == 1'b1);
             prof_si_bram_to_cu = prof_si_bram_to_cu + (global_cycle_cnt - start_cc);
             
             $display("[%0t] Vector SI Loaded for all CUs.", $time);
@@ -459,8 +463,14 @@ module tb_GEMV_Accelerator_Top;
         .host_we_act(host_we_act),
         .host_addr_act(host_addr_act),
         .host_data_act(host_data_act),
-        .host_start_broadcast(host_start_broadcast),
-        .broadcast_done(broadcast_done),
+        .host_start_broadcast_act(host_start_broadcast_act),
+        .broadcast_done_act(broadcast_done_act),
+
+        .host_we_si(host_we_si),
+        .host_addr_si(host_addr_si),
+        .host_data_si(host_data_si),
+        .host_start_broadcast_si(host_start_broadcast_si),
+        .broadcast_done_si(broadcast_done_si),
 
         // 结果输出
         .out_rd_en(out_rd_en),
