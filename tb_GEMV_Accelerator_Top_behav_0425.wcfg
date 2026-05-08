@@ -11,15 +11,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="119.867699 us"></ZoomStartTime>
-      <ZoomEndTime time="169.217700 us"></ZoomEndTime>
-      <Cursor1Time time="103.958801 us"></Cursor1Time>
+      <ZoomStartTime time="142.990666 us"></ZoomStartTime>
+      <ZoomEndTime time="360.890667 us"></ZoomEndTime>
+      <Cursor1Time time="324.574000 us"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
-      <NameColumnWidth column_width="287"></NameColumnWidth>
-      <ValueColumnWidth column_width="139"></ValueColumnWidth>
+      <NameColumnWidth column_width="315"></NameColumnWidth>
+      <ValueColumnWidth column_width="145"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="19" />
+   <WVObjectSize size="33" />
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -82,6 +82,41 @@
       <obj_property name="CustomSignalColor">#00FFFF</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_controller/state" type="array">
+      <obj_property name="ElementShortName">state[3:0]</obj_property>
+      <obj_property name="ObjectShortName">state[3:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_controller/batch_cnt" type="array">
+      <obj_property name="ElementShortName">batch_cnt[5:0]</obj_property>
+      <obj_property name="ObjectShortName">batch_cnt[5:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_memory/uram_rd_en" type="logic">
+      <obj_property name="ElementShortName">uram_rd_en</obj_property>
+      <obj_property name="ObjectShortName">uram_rd_en</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_memory/uram_rd_addr" type="array">
+      <obj_property name="ElementShortName">uram_rd_addr[14:0]</obj_property>
+      <obj_property name="ObjectShortName">uram_rd_addr[14:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_memory/uram_dout" type="array">
+      <obj_property name="ElementShortName">uram_dout[287:0]</obj_property>
+      <obj_property name="ObjectShortName">uram_dout[287:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_memory/bram_wr_en" type="logic">
+      <obj_property name="ElementShortName">bram_wr_en</obj_property>
+      <obj_property name="ObjectShortName">bram_wr_en</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_memory/bram_wr_addr" type="array">
+      <obj_property name="ElementShortName">bram_wr_addr[9:0]</obj_property>
+      <obj_property name="ObjectShortName">bram_wr_addr[9:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_memory/bram_wr_data_wide" type="array">
+      <obj_property name="ElementShortName">bram_wr_data_wide[287:0]</obj_property>
+      <obj_property name="ObjectShortName">bram_wr_data_wide[287:0]</obj_property>
+   </wvobject>
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_controller/dma_batch_idx" type="array">
       <obj_property name="ElementShortName">dma_batch_idx[4:0]</obj_property>
       <obj_property name="ObjectShortName">dma_batch_idx[4:0]</obj_property>
@@ -131,5 +166,29 @@
       <obj_property name="ObjectShortName">out_data[31:0]</obj_property>
       <obj_property name="CustomSignalColor">#FFFFFF</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/s3_batch_cnt" type="array">
+      <obj_property name="ElementShortName">s3_batch_cnt[10:0]</obj_property>
+      <obj_property name="ObjectShortName">s3_batch_cnt[10:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/a_valid" type="logic">
+      <obj_property name="ElementShortName">a_valid</obj_property>
+      <obj_property name="ObjectShortName">a_valid</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/a_payload" type="array">
+      <obj_property name="ElementShortName">a_payload[17:0]</obj_property>
+      <obj_property name="ObjectShortName">a_payload[17:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/k_offset" type="array">
+      <obj_property name="ElementShortName">k_offset[4:0]</obj_property>
+      <obj_property name="ObjectShortName">k_offset[4:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/batch_done" type="logic">
+      <obj_property name="ElementShortName">batch_done</obj_property>
+      <obj_property name="ObjectShortName">batch_done</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/matrix_done" type="logic">
+      <obj_property name="ElementShortName">matrix_done</obj_property>
+      <obj_property name="ObjectShortName">matrix_done</obj_property>
    </wvobject>
 </wave_config>

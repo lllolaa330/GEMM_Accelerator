@@ -186,11 +186,11 @@ module tb_GEMV_Accelerator_Top;
                     host_data_uram[cu * A_PACKED_WIDTH +: A_PACKED_WIDTH] = shadow_mem_a[cu][j];
                 end
                 
-                // 判断是否写满了一个 Batch
+                // 如果写满了一个 Batch
                 if ((j + 1) % BATCH_SIZE == 0) begin
                     @(negedge clk);
                     host_we_uram = 0;               // 暂停写一拍
-                    host_uram_batch_ready = 1;      // 发送 Batch 准备好脉冲
+                    host_uram_batch_ready = 1;      // 发送 Batch 写入uram完毕 脉冲
                     @(negedge clk);
                     host_uram_batch_ready = 0;      // 撤销脉冲，继续下一个 Batch 写入
                 end

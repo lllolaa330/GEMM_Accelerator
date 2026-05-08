@@ -38,7 +38,7 @@ module Memory_Subsystem #(
     wire [$clog2(BATCH_SIZE*BATCH_NUMS)-1:0]  uram_rd_addr;
     wire [DATA_WIDTH-1:0]                     uram_dout;
 
-    // 1. DMA 引擎
+    // 1. DMA 引擎 URAM--BRAM 数据搬运
     Data_DMA_Engine #(
         .M(M), .N(N), .T_WIDTH(T_WIDTH), 
         .RAM_LATENCY(RAM_LATENCY), .PIPE_STAGES(PIPE_STAGES)

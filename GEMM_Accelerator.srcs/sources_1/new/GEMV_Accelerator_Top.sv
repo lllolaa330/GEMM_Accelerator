@@ -20,7 +20,7 @@ module GEMV_Accelerator_Top #(
 
     // --- 主机控制接口 ---
     input  wire                               host_start,
-    input  wire                               host_uram_batch_ready, // 新增：Host每写完一个Batch的URAM数据，拉高1拍
+    input  wire                               host_uram_batch_ready, // Host每写完一个Batch的URAM数据，拉高1拍
     output wire                               system_done,
 
     // --- 主机配置 L2 URAM 宽接口 (权重 A) ---
