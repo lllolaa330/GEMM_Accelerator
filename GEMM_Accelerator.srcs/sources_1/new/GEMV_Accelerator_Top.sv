@@ -55,6 +55,7 @@ module GEMV_Accelerator_Top #(
     wire [$clog2(BATCH_NUMS)-1:0]        ctrl_compute_batch_idx;
     wire                                 compute_all_batch_done;
     wire                                 compute_all_matrix_done;
+    wire                                 compute_all_cu_ready;       
     wire                                 ctrl_start_accum;
     wire                                 ctrl_accum_done;
 
@@ -73,8 +74,10 @@ module GEMV_Accelerator_Top #(
         .start_system(host_start), .host_uram_batch_ready(host_uram_batch_ready), .system_done(system_done),
         .start_dma(ctrl_start_dma), .dma_batch_idx(ctrl_dma_batch_idx), .dma_done(mem_dma_done),
         .ping_pong_sel(ctrl_ping_pong_sel), .start_compute(ctrl_start_compute),
-        .compute_batch_idx(ctrl_compute_batch_idx), .all_batch_done(compute_all_batch_done),
-        .all_matrix_done(compute_all_matrix_done),
+        .compute_batch_idx(ctrl_compute_batch_idx), 
+        .all_batch_done(compute_all_batch_done),
+        .all_matrix_done(compute_all_matrix_done), 
+        .all_cu_ready(compute_all_cu_ready),
         .start_accum(ctrl_start_accum), .accum_done(ctrl_accum_done)
     );
 
@@ -108,8 +111,9 @@ module GEMV_Accelerator_Top #(
         .dma_wr_en(mem_bram_wr_en), .dma_wr_addr(mem_bram_wr_addr), .dma_wr_data_wide(mem_bram_wr_data_wide),
         
         .start_compute(ctrl_start_compute), .current_k_offset(ctrl_compute_batch_idx),
-        .all_batch_done(compute_all_batch_done), .all_matrix_done(compute_all_matrix_done),
-        
+        .all_batch_done(compute_all_batch_done), 
+        .all_matrix_done(compute_all_matrix_done),
+        .all_cu_ready(compute_all_cu_ready),
         .start_accum(ctrl_start_accum),.accum_done(ctrl_accum_done),
         .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
     );

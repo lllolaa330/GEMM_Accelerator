@@ -275,7 +275,7 @@ module tb_GEMV_Accelerator_Top;
     task print_gemm_summary;
         begin
             $display("\n##################################################################");
-            $display("                  GEMM (20x GEMV) FINAL SUMMARY                   ");
+            $display("                  GEMM FINAL SUMMARY                   ");
             $display("##################################################################");
             for (i = 0; i < GEMV_NUM; i = i + 1) begin
                 if (gemv_err_cnt[i] == 0)

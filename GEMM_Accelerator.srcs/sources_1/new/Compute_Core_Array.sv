@@ -33,6 +33,7 @@ module Compute_Core_Array #(
     input  wire [$clog2(BATCH_NUMS)-1:0]      current_k_offset,
     output wire                               all_batch_done,
     output wire                               all_matrix_done,
+    output wire                               all_cu_ready,
 
     // 累加器控制与输出
     input  wire                               start_accum,
@@ -48,9 +49,51 @@ module Compute_Core_Array #(
 
     wire [CU_NUMS-1:0] cu_batch_done_arr;
     wire [CU_NUMS-1:0] cu_matrix_done_arr;
+    wire [CU_NUMS-1:0] cu_cu_ready_arr;
 
-    assign all_batch_done  = &cu_batch_done_arr;   
-    assign all_matrix_done = &cu_matrix_done_arr;
+    reg [CU_NUMS-1:0] cu_batch_done_arr_flag;
+    reg [CU_NUMS-1:0] cu_matrix_done_arr_flag;
+    reg [CU_NUMS-1:0] cu_cu_ready_arr_flag;
+
+    reg               batch_soft_rst;
+    reg               dma_wr_en_d1;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            batch_soft_rst <= 1'b0;
+            dma_wr_en_d1   <= 1'b0;
+        end else begin
+            dma_wr_en_d1   <= dma_wr_en;
+            batch_soft_rst <= dma_wr_en & ~dma_wr_en_d1; // dma_wr_en 从0变1时产生一个周期的软复位信号
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            cu_batch_done_arr_flag  <= {CU_NUMS{1'b0}};
+            cu_matrix_done_arr_flag <= {CU_NUMS{1'b0}};
+            cu_cu_ready_arr_flag    <= {CU_NUMS{1'b0}};
+        end else if (batch_soft_rst) begin
+            cu_batch_done_arr_flag  <= {CU_NUMS{1'b0}};
+            cu_cu_ready_arr_flag    <= {CU_NUMS{1'b0}};
+        end else begin
+            for (int i = 0; i < CU_NUMS; i = i + 1) begin
+                if (cu_batch_done_arr[i]) begin
+                    cu_batch_done_arr_flag[i]  <= 1'b1; // 一旦某个CU的batch_done_arr为1，就保持1直到复位
+                end
+                if (cu_matrix_done_arr[i]) begin
+                    cu_matrix_done_arr_flag[i] <= 1'b1;
+                end
+                if (cu_cu_ready_arr[i]) begin
+                    cu_cu_ready_arr_flag[i]    <= 1'b1;
+                end
+            end
+        end
+    end
+
+    assign all_batch_done  = &cu_batch_done_arr_flag;   
+    assign all_matrix_done = &cu_matrix_done_arr_flag;
+    assign all_cu_ready    = &cu_cu_ready_arr_flag;
 
     Act_SI_Broadcast_Buffer #(
         .N(N), .B_VEC_LEN(B_VEC_LEN)
@@ -89,12 +132,12 @@ module Compute_Core_Array #(
                 .out_rd_addr(internal_rd_addr),
                 .out_data(internal_out_wide[i*OUT_WIDTH +: OUT_WIDTH]),
                 
-                .matrix_done(cu_matrix_done_arr[i]), .batch_done(cu_batch_done_arr[i]) 
+                .matrix_done(cu_matrix_done_arr[i]), .batch_done(cu_batch_done_arr[i]), .cu_ready(cu_cu_ready_arr[i])
             );
         end
     endgenerate
 
-    // --- 例化累加器，收尾工作 ---
+    // --- 行累加器 ---
     Array_Output_Accumulation #(
         .COL_NUM(CU_NUMS), .L(M), .OUT_WIDTH(OUT_WIDTH)
     ) u_accumulator (

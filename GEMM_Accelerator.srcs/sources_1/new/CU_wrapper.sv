@@ -36,7 +36,8 @@ module CU_Wrapper #(
     input  wire [OUTPUT_ADDR_WIDTH-1:0]         out_rd_addr,
     output wire signed [OUT_WIDTH-1:0]          out_data,
     output wire                                 batch_done,
-    output wire                                 matrix_done
+    output wire                                 matrix_done,
+    output wire                                 cu_ready
 );
 
     // =========================================================================
@@ -117,32 +118,34 @@ module CU_Wrapper #(
     // =========================================================================
     // 例化 2: 核心计算逻辑 SlidingWindow_CU
     // =========================================================================
-    SlidingWindow_CU #(
-        .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
-        .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH),
-        .WINDOW_SIZE(16)
-    ) u_compute_core (
-        .clk(clk),
-        .rst_n(rst_n),
+    // assign cu_ready = 1'b1;
+    // SlidingWindow_CU #(
+    //     .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
+    //     .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH),
+    //     .WINDOW_SIZE(16)
+    // ) u_compute_core (
+    //     .clk(clk),
+    //     .rst_n(rst_n),
         
-        // 配置接口
-        .cfg_we_b(cfg_we_b),
-        .cfg_addr_b(cfg_addr_b),
-        .cfg_data_b(cfg_data_b),
+    //     // 配置接口
+    //     .cfg_we_b(cfg_we_b),
+    //     .cfg_addr_b(cfg_addr_b),
+    //     .cfg_data_b(cfg_data_b),
         
-        // 流式运行接口 (对接 BRAM 读出)
-        .a_valid(a_valid_d1),          // 使用打拍后的 valid
-        .a_payload(bram_dout),         // 直接接入 BRAM 的输出
-        .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
+    //     // 流式运行接口 (对接 BRAM 读出)
+    //     .a_valid(a_valid_d1),          // 使用打拍后的 valid
+    //     .a_payload(bram_dout),         // 直接接入 BRAM 的输出
+    //     .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
         
-        // 结果输出
-        .batch_done(batch_done),
-        .matrix_done(matrix_done),
-        .out_rd_en(out_rd_en),
-        .out_rd_addr(out_rd_addr),
-        .out_data(out_data)
-    );
-    /*
+    //     .batch_done(batch_done),
+    //     .matrix_done(matrix_done),
+        
+    //     // 结果输出
+    //     .out_rd_en(out_rd_en),
+    //     .out_rd_addr(out_rd_addr),
+    //     .out_data(out_data)
+    // );
+    
     Dynamic_Scoreboard_CU #(
         .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
         .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH)
@@ -160,17 +163,15 @@ module CU_Wrapper #(
         .a_payload(bram_dout),         // 直接接入 BRAM 的输出
         .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
         
-        .unit_ready(unit_ready),
-
-        // 结果输出
+        .unit_ready(cu_ready),
         .batch_done(batch_done),
         .matrix_done(matrix_done),
+
+        // 结果输出
         .out_rd_en(out_rd_en),
         .out_rd_addr(out_rd_addr),
         .out_data(out_data)
     );
-    */
-
-
+    
 
 endmodule

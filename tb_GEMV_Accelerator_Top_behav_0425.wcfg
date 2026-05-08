@@ -11,15 +11,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="142.990666 us"></ZoomStartTime>
-      <ZoomEndTime time="360.890667 us"></ZoomEndTime>
-      <Cursor1Time time="324.574000 us"></Cursor1Time>
+      <ZoomStartTime time="796.570500 us"></ZoomStartTime>
+      <ZoomEndTime time="1,491.643501 us"></ZoomEndTime>
+      <Cursor1Time time="1,375.798000 us"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="315"></NameColumnWidth>
-      <ValueColumnWidth column_width="145"></ValueColumnWidth>
+      <ValueColumnWidth column_width="137"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="33" />
+   <WVObjectSize size="29" />
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -130,6 +130,10 @@
       <obj_property name="CustomSignalColor">#00FFFF</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/all_batch_done" type="logic">
+      <obj_property name="ElementShortName">all_batch_done</obj_property>
+      <obj_property name="ObjectShortName">all_batch_done</obj_property>
+   </wvobject>
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_controller/start_compute" type="logic">
       <obj_property name="ElementShortName">start_compute</obj_property>
       <obj_property name="ObjectShortName">start_compute</obj_property>
@@ -155,34 +159,6 @@
       <obj_property name="CustomSignalColor">#FAAFBE</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/out_rd_en" type="logic">
-      <obj_property name="ElementShortName">out_rd_en</obj_property>
-      <obj_property name="ObjectShortName">out_rd_en</obj_property>
-      <obj_property name="CustomSignalColor">#FFFFFF</obj_property>
-      <obj_property name="UseCustomSignalColor">true</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/out_data" type="array">
-      <obj_property name="ElementShortName">out_data[31:0]</obj_property>
-      <obj_property name="ObjectShortName">out_data[31:0]</obj_property>
-      <obj_property name="CustomSignalColor">#FFFFFF</obj_property>
-      <obj_property name="UseCustomSignalColor">true</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/s3_batch_cnt" type="array">
-      <obj_property name="ElementShortName">s3_batch_cnt[10:0]</obj_property>
-      <obj_property name="ObjectShortName">s3_batch_cnt[10:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/a_valid" type="logic">
-      <obj_property name="ElementShortName">a_valid</obj_property>
-      <obj_property name="ObjectShortName">a_valid</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/a_payload" type="array">
-      <obj_property name="ElementShortName">a_payload[17:0]</obj_property>
-      <obj_property name="ObjectShortName">a_payload[17:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/k_offset" type="array">
-      <obj_property name="ElementShortName">k_offset[4:0]</obj_property>
-      <obj_property name="ObjectShortName">k_offset[4:0]</obj_property>
-   </wvobject>
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/batch_done" type="logic">
       <obj_property name="ElementShortName">batch_done</obj_property>
       <obj_property name="ObjectShortName">batch_done</obj_property>
@@ -190,5 +166,9 @@
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/matrix_done" type="logic">
       <obj_property name="ElementShortName">matrix_done</obj_property>
       <obj_property name="ObjectShortName">matrix_done</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/cu_batch_done_arr_flag" type="array">
+      <obj_property name="ElementShortName">cu_batch_done_arr_flag[15:0]</obj_property>
+      <obj_property name="ObjectShortName">cu_batch_done_arr_flag[15:0]</obj_property>
    </wvobject>
 </wave_config>
