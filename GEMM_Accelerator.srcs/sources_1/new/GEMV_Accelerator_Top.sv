@@ -32,6 +32,9 @@ module GEMV_Accelerator_Top #(
     input  wire                               host_we_act,
     input  wire [$clog2(B_VEC_LEN)-1:0]       host_addr_act,
     input  wire [7:0]                         host_data_act,
+    input  wire                               host_we_si,
+    input  wire [T_WIDTH-1:0]                 host_addr_si,
+    input  wire [T_WIDTH-1:0]                 host_data_si,
     input  wire                               host_start_broadcast,
     output wire                               broadcast_done,
 
@@ -105,6 +108,7 @@ module GEMV_Accelerator_Top #(
         .clk(clk), .rst_n(rst_n),
         
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
+        .host_we_si(host_we_si), .host_addr_si(host_addr_si), .host_data_si(host_data_si),
         .start_broadcast(host_start_broadcast), .broadcast_done(broadcast_done),
         
         .ping_pong_sel(ctrl_ping_pong_sel),

@@ -6,10 +6,10 @@ module tb_GEMV_Accelerator_Top;
     // 1. 参数与配置 
     // =========================================================================
     parameter WEIGHT_TOTAL_ROW = 1024;                  // 完整的权重总行数
-    parameter B_VEC_LEN      = 4096;                   // 完整的权重总列数 也是 B向量的长度
+    parameter B_VEC_LEN      = 4096;                    // 完整的权重总列数 也是 B向量的长度
     localparam GEMV_NUM       = 1;                      // 总共计算的GEMV次数（组成完整GEMM）
     string  base_dir = "C:/Users/lllolaa/Desktop/data_L38/data_L38"; 
-    string target_layer = "k_proj";                  // 目标层名称，用于构建文件路径
+    string target_layer = "k_proj";                     // 目标层名称，用于构建文件路径
     parameter CLK_MHZ = 300;                            // 时钟频率 (MHz)
 
     parameter M              = 256;                     // 底层 CU 计算的行数 (每次处理256行)
@@ -48,6 +48,9 @@ module tb_GEMV_Accelerator_Top;
     reg                               host_we_act;
     reg [$clog2(B_VEC_LEN)-1:0]       host_addr_act;
     reg [7:0]                         host_data_act;
+    reg                               host_we_si;
+    reg [T_WIDTH-1:0]                 host_addr_si;
+    reg [T_WIDTH-1:0]                 host_data_si;
     reg                               host_start_broadcast;
     wire                              broadcast_done;
 
@@ -57,7 +60,8 @@ module tb_GEMV_Accelerator_Top;
     wire [OUT_WIDTH-1:0]              out_data;
 
     // 模拟存储器 - 用于加载输入数据和保存输出结果
-    reg [7:0]                         mem_b [0: B_VEC_LEN-1]; 
+    reg [7:0]                         mem_b [0: B_VEC_LEN-1];
+    reg [T_WIDTH-1:0]                 mem_si [0: 2**T_WIDTH-1]; 
     reg [A_PACKED_WIDTH-1:0]          temp_mem_a [0: URAM_DEPTH-1]; 
     reg [A_PACKED_WIDTH-1:0]          shadow_mem_a [0: CU_NUMS-1][0: URAM_DEPTH-1]; 
     
@@ -75,6 +79,8 @@ module tb_GEMV_Accelerator_Top;
     integer global_cycle_cnt;            // 全局时钟周期计数器
     integer prof_act_ext_to_bram  [0:GEMV_NUM-1];
     integer prof_act_bram_to_cu   [0:GEMV_NUM-1];
+    integer prof_si_ext_to_bram   ;
+    integer prof_si_bram_to_cu    ;
     integer prof_wt_ext_to_uram   [0:GEMV_NUM-1];
     integer prof_compute          [0:GEMV_NUM-1]; // 包含 URAM->BRAM->CU 以及底层计算
     integer prof_out_bram_to_ext  [0:GEMV_NUM-1];
@@ -100,6 +106,7 @@ module tb_GEMV_Accelerator_Top;
             host_uram_batch_ready = 0;
             host_we_uram = 0; host_addr_uram = 0; host_data_uram = 0;
             host_we_act = 0; host_addr_act = 0; host_data_act = 0;
+            host_we_si = 0; host_addr_si = 0; host_data_si = 0;
             host_start_broadcast = 0;
             out_rd_en = 0; out_rd_addr = 0;
 
@@ -108,6 +115,8 @@ module tb_GEMV_Accelerator_Top;
                 gemv_err_cnt[i] = 0;
                 prof_act_ext_to_bram[i]  = 0;
                 prof_act_bram_to_cu[i]   = 0;
+                prof_si_ext_to_bram       = 0;
+                prof_si_bram_to_cu        = 0;
                 prof_wt_ext_to_uram[i]   = 0;
                 prof_compute[i]          = 0;
                 prof_out_bram_to_ext[i]  = 0;
@@ -120,10 +129,10 @@ module tb_GEMV_Accelerator_Top;
     endtask
 
     // =========================================================================
-    // 4. 数据加载与读取任务 (加入周期统计)
+    // 4. 数据加载与读取任务
     // =========================================================================
 
-    // Step 1: 加载并配置向量 B 
+    // Step 1: 加载并配置向量 B 和 SI
     task config_b_vector;
         input integer g_idx;
         string b_path;
@@ -144,7 +153,7 @@ module tb_GEMV_Accelerator_Top;
             @(negedge clk);
             host_we_act = 0;
             prof_act_ext_to_bram[g_idx] = prof_act_ext_to_bram[g_idx] + (global_cycle_cnt - start_cc);
-            
+  
             // 统计 Act：BRAM 广播到底层 CU 用时
             start_cc = global_cycle_cnt;
             @(negedge clk);
@@ -154,8 +163,42 @@ module tb_GEMV_Accelerator_Top;
             
             wait(broadcast_done == 1'b1);
             prof_act_bram_to_cu[g_idx] = prof_act_bram_to_cu[g_idx] + (global_cycle_cnt - start_cc);
-            
+
             $display("[%0t] Vector B Broadcast Done for GEMV %0d.", $time, g_idx);
+        end
+    endtask
+
+    task config_si_vector;
+        string si_path;
+        integer start_cc; // 局部时间记录
+        begin
+            $display("[%0t] Loading SI for all CUs...", $time);
+            si_path = $sformatf("%s/si.txt", base_dir);
+            $readmemh(si_path, mem_si);
+            
+            // 统计 SI：外部写入 BRAM 用时
+            start_cc = global_cycle_cnt;
+            for (i = 0; i < 2**T_WIDTH; i = i + 1) begin
+                @(negedge clk);
+                host_we_si   = 1;
+                host_addr_si = i;
+                host_data_si = mem_si[i];
+            end
+            @(negedge clk);
+            host_we_si = 0;
+            prof_si_ext_to_bram = prof_si_ext_to_bram + (global_cycle_cnt - start_cc);
+
+            // 统计 SI：BRAM 广播到底层 CU 用时
+            start_cc = global_cycle_cnt;
+            @(negedge clk);
+            host_start_broadcast = 1;
+            @(negedge clk);
+            host_start_broadcast = 0;
+            
+            wait(broadcast_done == 1'b1);
+            prof_si_bram_to_cu = prof_si_bram_to_cu + (global_cycle_cnt - start_cc);
+            
+            $display("[%0t] Vector SI Loaded for all CUs.", $time);
         end
     endtask
 
@@ -323,6 +366,7 @@ module tb_GEMV_Accelerator_Top;
     // =========================================================================
     initial begin
         init_signals();
+        config_si_vector();
         
         // 外层循环：遍历所有 B 向量，执行完整的 GEMM
         for (gemv_idx = 0; gemv_idx < GEMV_NUM; gemv_idx = gemv_idx + 1) begin
@@ -344,7 +388,7 @@ module tb_GEMV_Accelerator_Top;
                     #100;
                 end
                 
-                // 加载对应的 B 向量
+                // 加载对应的 B 向量 & SI
                 config_b_vector(gemv_idx);
                 
                 // a) 触发系统，进入WAIT_URAM_PRE状态等待数据

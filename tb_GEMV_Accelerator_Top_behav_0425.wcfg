@@ -11,15 +11,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="796.570500 us"></ZoomStartTime>
-      <ZoomEndTime time="1,491.643501 us"></ZoomEndTime>
-      <Cursor1Time time="1,375.798000 us"></Cursor1Time>
+      <ZoomStartTime time="0.000000 us"></ZoomStartTime>
+      <ZoomEndTime time="1,376.840001 us"></ZoomEndTime>
+      <Cursor1Time time="1,376.840000 us"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="315"></NameColumnWidth>
-      <ValueColumnWidth column_width="137"></ValueColumnWidth>
+      <ValueColumnWidth column_width="129"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="29" />
+   <WVObjectSize size="26" />
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -158,17 +158,5 @@
       <obj_property name="ObjectShortName">accum_done</obj_property>
       <obj_property name="CustomSignalColor">#FAAFBE</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/batch_done" type="logic">
-      <obj_property name="ElementShortName">batch_done</obj_property>
-      <obj_property name="ObjectShortName">batch_done</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[3].u_cu_wrapper /u_compute_core/matrix_done" type="logic">
-      <obj_property name="ElementShortName">matrix_done</obj_property>
-      <obj_property name="ObjectShortName">matrix_done</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/cu_batch_done_arr_flag" type="array">
-      <obj_property name="ElementShortName">cu_batch_done_arr_flag[15:0]</obj_property>
-      <obj_property name="ObjectShortName">cu_batch_done_arr_flag[15:0]</obj_property>
    </wvobject>
 </wave_config>

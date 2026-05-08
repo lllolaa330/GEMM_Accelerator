@@ -19,6 +19,9 @@ module Compute_Core_Array #(
     input  wire                               host_we_act,
     input  wire [$clog2(B_VEC_LEN)-1:0]       host_addr_act,
     input  wire [7:0]                         host_data_act,
+    input  wire                               host_we_si,
+    input  wire [T_WIDTH-1:0]                 host_addr_si, 
+    input  wire [T_WIDTH-1:0]                 host_data_si,
     input  wire                               start_broadcast,
     output wire                               broadcast_done,
 
@@ -46,6 +49,10 @@ module Compute_Core_Array #(
     wire                          brd_cfg_we_b;
     wire [$clog2(N)-1:0]          brd_cfg_addr_b;
     wire [CU_NUMS * 8 - 1 : 0]    brd_cfg_data_b_bus; // 并行数据总线
+
+    wire                          brd_cfg_we_si;
+    wire [T_WIDTH-1:0]            brd_cfg_addr_si;
+    wire [T_WIDTH-1:0]            brd_cfg_data_si;
 
     wire [CU_NUMS-1:0] cu_batch_done_arr;
     wire [CU_NUMS-1:0] cu_matrix_done_arr;
@@ -100,13 +107,13 @@ module Compute_Core_Array #(
     ) u_broadcast_center (
         .clk(clk), .rst_n(rst_n),
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
-        .host_we_si(1'b0), .host_addr_si(8'd0), .host_data_si(8'd0), // SI暂不接入
+        .host_we_si(host_we_si), .host_addr_si(host_addr_si), .host_data_si(host_data_si), 
         .start_broadcast(start_broadcast),
         .broadcast_done(broadcast_done),
         .cfg_we_b(brd_cfg_we_b),
         .cfg_addr_b(brd_cfg_addr_b),
         .cfg_data_b_bus(brd_cfg_data_b_bus),
-        .cfg_we_si(), .cfg_addr_si(), .cfg_data_si()  // SI暂不接入
+        .cfg_we_si(brd_cfg_we_si), .cfg_addr_si(brd_cfg_addr_si), .cfg_data_si(brd_cfg_data_si)  
     );
 
     // 内部总线：连接 CU 和 Accumulator
@@ -126,8 +133,8 @@ module Compute_Core_Array #(
                 .dma_wr_data(dma_wr_data_wide[i*A_PACKED_WIDTH +: A_PACKED_WIDTH]),
                 .start_compute(start_compute), .current_k_offset(current_k_offset),
                 .cfg_we_b(brd_cfg_we_b), .cfg_addr_b(brd_cfg_addr_b), .cfg_data_b(brd_cfg_data_b_bus[i*8 +: 8]),
+                .cfg_we_si(brd_cfg_we_si), .cfg_addr_si(brd_cfg_addr_si), .cfg_data_si(brd_cfg_data_si),
                 
-                // --- 被 Accumulator 接管读取权 ---
                 .out_rd_en(internal_rd_en),
                 .out_rd_addr(internal_rd_addr),
                 .out_data(internal_out_wide[i*OUT_WIDTH +: OUT_WIDTH]),
@@ -137,7 +144,7 @@ module Compute_Core_Array #(
         end
     endgenerate
 
-    // --- 行累加器 ---
+    // 行累加器
     Array_Output_Accumulation #(
         .COL_NUM(CU_NUMS), .L(M), .OUT_WIDTH(OUT_WIDTH)
     ) u_accumulator (
