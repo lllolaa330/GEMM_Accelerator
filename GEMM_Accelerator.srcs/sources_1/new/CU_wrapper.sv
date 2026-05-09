@@ -187,6 +187,27 @@ module CU_Wrapper #(
               .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
           );
       end
+      else if (CU_TYPE == 3) begin : GEN_DSP
+          dsp_baseline_CU #(
+              .M(M), .N(N), 
+              .T_WIDTH(T_WIDTH), .B_DATA_BITS(B_DATA_BITS),
+              .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH)
+          ) u_compute_core (
+              .clk(clk),
+              .rst_n(rst_n),
+              // 配置接口
+              .cfg_we_b(cfg_we_b), .cfg_addr_b(cfg_addr_b), .cfg_data_b(cfg_data_b),
+              
+              // 流式运行接口 (对接 BRAM 读出)
+              .a_valid(a_valid_d1),          
+              .a_payload(bram_dout),   
+              .k_offset(current_k_offset),
+              .cu_ready(cu_ready), .batch_done(batch_done),.matrix_done(matrix_done),
+              
+              // 结果输出
+              .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
+          );
+      end
     endgenerate
     
     

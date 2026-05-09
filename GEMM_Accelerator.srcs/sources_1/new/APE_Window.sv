@@ -65,8 +65,7 @@ module APE_Window #(
     assign base_val = (fwd_valid && (row_idx == fwd_row_idx)) ? fwd_data : ram_val_checked;
     assign next_sum = base_val + shifted_psum_in;
     
-    assign ape_result = base_val;
-
+    assign ape_result = base_val; 
     // --- 核心累加写入逻辑 ---
     always @(posedge clk) begin
         if (valid_in) begin
