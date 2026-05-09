@@ -12,14 +12,14 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0.000000 us"></ZoomStartTime>
-      <ZoomEndTime time="882.420001 us"></ZoomEndTime>
-      <Cursor1Time time="324.196000 us"></Cursor1Time>
+      <ZoomEndTime time="227.215621 us"></ZoomEndTime>
+      <Cursor1Time time="248.379000 us"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="199"></NameColumnWidth>
-      <ValueColumnWidth column_width="250"></ValueColumnWidth>
+      <ValueColumnWidth column_width="242"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="22" />
+   <WVObjectSize size="30" />
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -126,16 +126,64 @@
       <obj_property name="CustomSignalColor">#00FFFF</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_sorter/in_ready" type="logic">
+      <obj_property name="ElementShortName">in_ready</obj_property>
+      <obj_property name="ObjectShortName">in_ready</obj_property>
+      <obj_property name="CustomSignalColor">#008080</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_sorter/state" type="array">
+      <obj_property name="ElementShortName">state[2:0]</obj_property>
+      <obj_property name="ObjectShortName">state[2:0]</obj_property>
+      <obj_property name="CustomSignalColor">#008080</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_sorter/read_ptr" type="array">
+      <obj_property name="ElementShortName">read_ptr[3:0]</obj_property>
+      <obj_property name="ObjectShortName">read_ptr[3:0]</obj_property>
+      <obj_property name="CustomSignalColor">#008080</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_sorter/in_batch_start" type="logic">
+      <obj_property name="ElementShortName">in_batch_start</obj_property>
+      <obj_property name="ObjectShortName">in_batch_start</obj_property>
+      <obj_property name="CustomSignalColor">#008080</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_sorter/in_valid" type="logic">
+      <obj_property name="ElementShortName">in_valid</obj_property>
+      <obj_property name="ObjectShortName">in_valid</obj_property>
+      <obj_property name="CustomSignalColor">#008080</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_dsb_core/state" type="array">
+      <obj_property name="ElementShortName">state[2:0]</obj_property>
+      <obj_property name="ObjectShortName">state[2:0]</obj_property>
+      <obj_property name="CustomSignalColor">#FFFF00</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_dsb_core/in_ready" type="logic">
+      <obj_property name="ElementShortName">in_ready</obj_property>
+      <obj_property name="ObjectShortName">in_ready</obj_property>
+      <obj_property name="CustomSignalColor">#FFFF00</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_compute_array/\CU_INST[0].u_cu_wrapper /GEN_DYNAMIC.u_compute_core/u_sorter_and_si/u_dsb_core/in_valid" type="logic">
+      <obj_property name="ElementShortName">in_valid</obj_property>
+      <obj_property name="ObjectShortName">in_valid</obj_property>
+      <obj_property name="CustomSignalColor">#FFFF00</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_controller/start_compute" type="logic">
       <obj_property name="ElementShortName">start_compute</obj_property>
       <obj_property name="ObjectShortName">start_compute</obj_property>
-      <obj_property name="CustomSignalColor">#FAAFBE</obj_property>
+      <obj_property name="CustomSignalColor">#00FFFF</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_GEMV_Accelerator_Top/dut/u_controller/compute_batch_idx" type="array">
       <obj_property name="ElementShortName">compute_batch_idx[4:0]</obj_property>
       <obj_property name="ObjectShortName">compute_batch_idx[4:0]</obj_property>
-      <obj_property name="CustomSignalColor">#FAAFBE</obj_property>
+      <obj_property name="CustomSignalColor">#00FFFF</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
       <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>

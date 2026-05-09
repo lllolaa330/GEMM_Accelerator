@@ -8,6 +8,7 @@ module CU_Wrapper #(
     parameter B_DATA_BITS       = 8,
     parameter PSUM_WIDTH        = 24,
     parameter OUT_WIDTH         = 32,
+    parameter CU_TYPE           = 0,             // 0:Static, 1:Dynamic, 2:SlidingWindow
     parameter BATCH_NUMS        = N / T_WIDTH,
     parameter BATCH_SIZE        = M * 4,
     parameter OFFSET_ADDR_WIDTH = $clog2(BATCH_NUMS),
@@ -49,8 +50,6 @@ module CU_Wrapper #(
     // 参数与内部信号声明
     // =========================================================================
     localparam ADDR_W = $clog2(BATCH_SIZE);
-    wire unit_ready;
-    assign unit_ready = 1'b1; 
 
     // BRAM 到 CU 的连线
     wire                              cu_rd_en;
@@ -73,18 +72,16 @@ module CU_Wrapper #(
             read_active <= 1'b1;
             cu_rd_addr  <= 0;
         end else if (read_active) begin
-            if (unit_ready) begin
                 if (cu_rd_addr == BATCH_SIZE - 1) begin
                     read_active <= 1'b0; // 读完一个 Batch 停止
                 end else begin
                     cu_rd_addr <= cu_rd_addr + 1'b1;
                 end
-            end
         end
     end
 
-    // 读使能直接连 read_active
-    assign cu_rd_en = read_active & unit_ready;
+    // 读使能
+    assign cu_rd_en = read_active ;
 
     // =========================================================================
     // 逻辑 2: 数据对齐流水线
@@ -94,7 +91,7 @@ module CU_Wrapper #(
         if (!rst_n) begin
             a_valid_d1 <= 1'b0;
         end else begin
-          if (unit_ready) a_valid_d1 <= cu_rd_en;
+            a_valid_d1 <= cu_rd_en;
         end
     end
 
@@ -123,90 +120,76 @@ module CU_Wrapper #(
     // =========================================================================
     // 例化 2: 核心计算逻辑 SlidingWindow_CU
     // =========================================================================
-    assign cu_ready = 1'b1;
-    SlidingWindow_CU #(
-        .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
-        .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH),
-        .WINDOW_SIZE(16)
-    ) u_compute_core (
-        .clk(clk),
-        .rst_n(rst_n),
-        
-        // 配置接口
-        .cfg_we_b(cfg_we_b),
-        .cfg_addr_b(cfg_addr_b),
-        .cfg_data_b(cfg_data_b),
-        
-        // 流式运行接口 (对接 BRAM 读出)
-        .a_valid(a_valid_d1),          // 使用打拍后的 valid
-        .a_payload(bram_dout),         // 直接接入 BRAM 的输出
-        .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
-        
-        .batch_done(batch_done),
-        .matrix_done(matrix_done),
-        
-        // 结果输出
-        .out_rd_en(out_rd_en),
-        .out_rd_addr(out_rd_addr),
-        .out_data(out_data)
-    );
+    generate
+      if (CU_TYPE == 0) begin : GEN_STATIC
+          Static_Scoreboard_CU #(
+            .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
+            .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH)
+          ) u_compute_core (
+              .clk(clk),
+              .rst_n(rst_n),
+              // 配置接口
+              .cfg_we_b(cfg_we_b), .cfg_addr_b(cfg_addr_b), .cfg_data_b(cfg_data_b),
+              .cfg_we_si(cfg_we_si), .cfg_addr_si(cfg_addr_si), .cfg_data_si(cfg_data_si),
+              
+              // 流式运行接口
+              .a_valid(a_valid_d1),          // 使用打拍后的 valid
+              .a_payload(bram_dout),         // 直接接入 BRAM 的输出
+              .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
+              
+              .unit_ready(cu_ready), .batch_done(batch_done), .matrix_done(matrix_done),
+
+              // 结果输出
+              .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
+          );
+      end
+      else if (CU_TYPE == 1) begin : GEN_DYNAMIC
+          Dynamic_Scoreboard_CU #(
+            .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
+            .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH)
+          ) u_compute_core (
+              .clk(clk),
+              .rst_n(rst_n),
+              // 配置接口
+              .cfg_we_b(cfg_we_b), .cfg_addr_b(cfg_addr_b), .cfg_data_b(cfg_data_b),
+              
+              // 流式运行接口
+              .a_valid(a_valid_d1),          // 使用打拍后的 valid
+              .a_payload(bram_dout),         // 直接接入 BRAM 的输出
+              .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
+              
+              .unit_ready(cu_ready), .batch_done(batch_done), .matrix_done(matrix_done),
+
+              // 结果输出
+              .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
+          );
+      end
+      else if (CU_TYPE == 2) begin : GEN_WINDOW
+          assign cu_ready = 1'b1;
+          SlidingWindow_CU #(
+              .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
+              .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH),
+              .WINDOW_SIZE(16)
+          ) u_compute_core (
+              .clk(clk),
+              .rst_n(rst_n),
+              // 配置接口
+              .cfg_we_b(cfg_we_b), .cfg_addr_b(cfg_addr_b), .cfg_data_b(cfg_data_b),
+              
+              // 流式运行接口 (对接 BRAM 读出)
+              .a_valid(a_valid_d1),          // 使用打拍后的 valid
+              .a_payload(bram_dout),         // 直接接入 BRAM 的输出
+              .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
+              
+              .batch_done(batch_done), .matrix_done(matrix_done),
+              
+              // 结果输出
+              .out_rd_en(out_rd_en), .out_rd_addr(out_rd_addr), .out_data(out_data)
+          );
+      end
+    endgenerate
     
-    // Dynamic_Scoreboard_CU #(
-    //     .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
-    //     .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH)
-    // ) u_compute_core (
-    //     .clk(clk),
-    //     .rst_n(rst_n),
-        
-    //     // 配置接口
-    //     .cfg_we_b(cfg_we_b),
-    //     .cfg_addr_b(cfg_addr_b),
-    //     .cfg_data_b(cfg_data_b),
-        
-    //     // 流式运行接口 (对接 BRAM 读出)
-    //     .a_valid(a_valid_d1),          // 使用打拍后的 valid
-    //     .a_payload(bram_dout),         // 直接接入 BRAM 的输出
-    //     .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
-        
-    //     .unit_ready(cu_ready),
-    //     .batch_done(batch_done),
-    //     .matrix_done(matrix_done),
-
-    //     // 结果输出
-    //     .out_rd_en(out_rd_en),
-    //     .out_rd_addr(out_rd_addr),
-    //     .out_data(out_data)
-    // );
     
-    // Static_Scoreboard_CU #(
-    //     .M(M), .N(N), .T_WIDTH(T_WIDTH), .A_PACKED_WIDTH(A_PACKED_WIDTH),
-    //     .B_DATA_BITS(B_DATA_BITS), .PSUM_WIDTH(PSUM_WIDTH), .OUT_WIDTH(OUT_WIDTH)
-    // ) u_compute_core (
-    //     .clk(clk),
-    //     .rst_n(rst_n),
-        
-    //     // 配置接口
-    //     .cfg_we_b(cfg_we_b),
-    //     .cfg_addr_b(cfg_addr_b),
-    //     .cfg_data_b(cfg_data_b),
-
-    //     .cfg_we_si(cfg_we_si),
-    //     .cfg_addr_si(cfg_addr_si),
-    //     .cfg_data_si(cfg_data_si),
-        
-    //     // 流式运行接口 (对接 BRAM 读出)
-    //     .a_valid(a_valid_d1),          // 使用打拍后的 valid
-    //     .a_payload(bram_dout),         // 直接接入 BRAM 的输出
-    //     .k_offset(current_k_offset),   // 顶层告知当前算的是哪一块
-        
-    //     .unit_ready(cu_ready),
-    //     .batch_done(batch_done),
-    //     .matrix_done(matrix_done),
-
-    //     // 结果输出
-    //     .out_rd_en(out_rd_en),
-    //     .out_rd_addr(out_rd_addr),
-    //     .out_data(out_data)
-    // );
+    
 
 endmodule

@@ -86,6 +86,11 @@ module Global_Controller #(
             start_dma <= 0; start_compute <= 0; start_accum <= 0; system_done <= 0;
             case (state)
                 IDLE: begin batch_cnt <= 0; ping_pong_sel <= 0; end
+                WAIT_CU_READY: begin 
+                    // 等待计算单元准备好时，重置DMA和Compute的ready flags，确保每个batch都正确同步
+                    dma_ready_flag <= 0; 
+                    cmp_ready_flag <= 0;
+                end
                 SYNC_RUN: begin
                     if(batch_cnt == 0) start_compute <= 0; // 第一个batch还不能启动计算
                     else start_compute <= 1;               // 从第二个batch开始，计算和DMA同时启动

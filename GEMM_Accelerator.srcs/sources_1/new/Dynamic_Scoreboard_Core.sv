@@ -46,8 +46,8 @@ module Dynamic_Scoreboard_Core #(
     localparam DONE     = 3'd6;
 
     reg [T:0]   ptr;      // 遍历指针 0-255
+    integer     k;
     integer     i;
-    reg [3:0]   k;
 
     reg [T-1:0]          curr_idx;
     reg [T-1:0]          suffix;
@@ -68,7 +68,6 @@ module Dynamic_Scoreboard_Core #(
             clear_done   <= 1'b0;
             load_cnt     <= 1'b0;
             done_cnt     <= 1'b0;
-            k            <= 4'd0;
         end else begin
             case (state)
                 IDLE: begin
@@ -77,7 +76,6 @@ module Dynamic_Scoreboard_Core #(
                     if (start_load) begin
                          state    <= LOAD;
                          load_cnt <= 1'b0;
-                         k        <= 4'd0;
                     end
                 end
 
@@ -88,54 +86,13 @@ module Dynamic_Scoreboard_Core #(
                             state    <= FORWARD;
                             load_cnt <= 1'b0;
                             ptr      <= 1'b0;
-                            k        <= 4'd0;
                         end else begin
                             count_mem[in_node] <= count_mem[in_node] + 1;
                             load_cnt <= load_cnt + 1'b1;
                         end
                     end
                 end
-// --- Forward Pass (Alg 1) ---
-                FORWARD: begin
-                    if (ptr == NUM_NODES) begin
-                        state <= BACKWARD;
-                        ptr   <= NUM_NODES-1; // 准备反向遍历
-                        k     <= 4'd0;        // 离开时清零
-                    end else begin
-                        curr_idx = hamming_rom[ptr[T-1:0]];
-                        // 确定当前节点的源头距离
-                        if (count_mem[curr_idx] > 0 || curr_idx == 0)  temp_dis = 0;
-                        else                                           temp_dis = dist_mem[curr_idx];
 
-                        if(temp_dis < 3) begin
-                            next_dis = temp_dis + 1;
-                            // 去掉 for 循环，改为单周期执行 1 次，利用寄存器 k 打 8 拍
-                            if (!(curr_idx & (1 << k))) begin 
-                                suffix = curr_idx | (1 << k); 
-                                if (dist_mem[suffix] > next_dis) begin                
-                                    dist_mem[suffix] <= next_dis;                     
-                                end
-                                case (next_dis)                                    
-                                        3'd1: prefix_candidate_d1[suffix] <= curr_idx;
-                                        3'd2: prefix_candidate_d2[suffix] <= curr_idx;
-                                        3'd3: prefix_candidate_d3[suffix] <= curr_idx;
-                                endcase             
-                            end
-                            
-                            // 控制打拍与下一节点的跳转
-                            if (k == T - 1) begin
-                                k   <= 4'd0;
-                                ptr <= ptr + 1;
-                            end else begin
-                                k   <= k + 1;
-                            end
-                        end else begin
-                            ptr <= ptr + 1;
-                            k   <= 4'd0;
-                        end
-                    end 
-                end
-                /*
                 // --- Forward Pass (Alg 1) ---
                 FORWARD: begin
                     if (ptr == NUM_NODES) begin
@@ -167,7 +124,7 @@ module Dynamic_Scoreboard_Core #(
                         end
                         ptr <= ptr + 1;
                     end 
-                end*/
+                end
 
                 // --- Stage 3: Backward Pass (Alg 2) ---
                 // 确保被重用的 Prefix 自身在 Count 中被标记，保证其计算不被跳过

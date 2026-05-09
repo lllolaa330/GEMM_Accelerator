@@ -27,7 +27,7 @@ module Dynamic_Scoreboard_CU #(
     input  wire [A_PACKED_WIDTH-1:0]     a_payload,
     input  wire [OFFSET_ADDR_WIDTH-1:0]  k_offset,
     output wire                          unit_ready,
-    output wire                          batch_done,
+    output wire                          batch_done, 
     output wire                          matrix_done,
 
     // --- Output Interface ---
@@ -39,7 +39,6 @@ module Dynamic_Scoreboard_CU #(
     // =========================================================================
     // 信号预声明
     // =========================================================================
-
     // --- RAM/BANK 预定义参数 ---
     localparam NUM_B_BANKS    = T_WIDTH;                   // Bank数量必须等于T_WIDTH以保证并行读
     localparam B_BANK_DEPTH   = N / T_WIDTH;               // 每个Bank的深度
@@ -84,15 +83,13 @@ module Dynamic_Scoreboard_CU #(
     reg [1:0]                     r_s3_bitplane_id;
     reg signed [PSUM_WIDTH-1:0]   r_s3_PPE_result; 
 
-    // --- Stage 3 信号 (APE 计算) ---
+    ///// Stage 3: APE 计算 /////
+    wire signed [PSUM_WIDTH-1:0]  s3_APE_result;
     wire                          s3_batch_last_data;
     wire                          s3_matrix_last_data;
-    wire signed [PSUM_WIDTH-1:0]  s3_APE_result;
-
     // --- Batch Done 计算逻辑 ---
     (* dont_touch = "true" *) reg [$clog2(BATCH_SIZE+1)-1:0] s3_batch_cnt;
     reg [7:0] batch_done_shift;
-
     // --- Matrix Done 计算逻辑 ---
     (* dont_touch = "true" *) reg [$clog2(TOTAL_PAYLOADS+1)-1:0] s3_matrix_cnt;
     reg [7:0] matrix_done_shift;
@@ -149,34 +146,6 @@ module Dynamic_Scoreboard_CU #(
             end 
         end     
     end
-
-    // =========================================================================
-    // STAGE 2 -> Stage 2b: RAM 读出对齐流水线 (打拍)
-    // =========================================================================
-    reg                           r_s2b_valid;
-    reg [T_WIDTH-1:0]             r_s2b_current_node;
-    reg [T_WIDTH-1:0]             r_s2b_prefix_node; 
-    reg [7:0]                     r_s2b_row_idx;            
-    reg [1:0]                     r_s2b_bitplane_id;
-
-    always @(posedge clk) begin
-        if (!rst_n) begin
-            r_s2b_valid        <= 0;
-            r_s2b_current_node <= 0;
-            r_s2b_prefix_node  <= 0;
-            r_s2b_row_idx      <= 0;
-            r_s2b_bitplane_id  <= 0;
-        end else begin
-            r_s2b_valid <= r_s2_valid;
-            if (r_s2_valid) begin
-                r_s2b_current_node <= r_s2_current_node;
-                r_s2b_prefix_node  <= r_s2_prefix_node;
-                r_s2b_row_idx      <= r_s2_row_idx;
-                r_s2b_bitplane_id  <= r_s2_bitplane_id;
-            end
-        end
-    end
-    
     // =========================================================================
     // Stage 2: Prefix Buffer (Dual Port Read)
     // =========================================================================
@@ -191,11 +160,11 @@ module Dynamic_Scoreboard_CU #(
         .waddr(r_s3_node_id[T_WIDTH-1:0]), 
         .wdata(r_s3_PPE_result), 
         // Port 1: 查 Prefix (由 Scoreboard 提供)
-        .raddr(r_s2b_prefix_node[T_WIDTH-1:0]), 
+        .raddr(r_s2_prefix_node[T_WIDTH-1:0]), 
         .rdata(s2_pb_rdata_prefix),
         .rvalid(s2_pb_rvalid),
         // Port 2: 查 Current Node (自检)
-        .raddr_check(r_s2b_current_node[T_WIDTH-1:0]),
+        .raddr_check(r_s2_current_node[T_WIDTH-1:0]),
         .rdata_check(s2_pb_rdata_self),
         .rvalid_check(s2_pb_rvalid_self)
     );
@@ -206,7 +175,6 @@ module Dynamic_Scoreboard_CU #(
     // =========================================================================
     // Stage 2 : Vector B Storage
     // =========================================================================
-    
     genvar gi;
     generate
         for (gi = 0; gi < NUM_B_BANKS; gi = gi + 1) begin : gen_b_banks
@@ -216,7 +184,7 @@ module Dynamic_Scoreboard_CU #(
                 .MEMORY_SIZE         (B_BANK_DEPTH * 8),  // 单个Bank的总比特数
                 .WRITE_DATA_WIDTH_A  (8),                 // 每次写入1个int8
                 .READ_DATA_WIDTH_B   (8),                 // 每次读出1个int8
-                .READ_LATENCY_B      (1),                 // 开启1拍延迟切断组合逻辑
+                .READ_LATENCY_B      (0),                 // 0延迟以支持组合逻辑穿透
                 .WRITE_MODE_B        ("read_first"),
                 .MEMORY_PRIMITIVE    ("distributed"),     // 强制使用LUTRAM
                 .CLOCKING_MODE       ("common_clock"),
@@ -257,8 +225,8 @@ module Dynamic_Scoreboard_CU #(
     // 1. Mask 逻辑
     // Direct Reuse -> Mask=0; Hit -> Mask=XOR; Miss -> Mask=Current
     assign s2_mask = s2_is_direct_reuse ? {T_WIDTH{1'b0}} : 
-                     (s2_hit            ? (r_s2b_current_node ^ r_s2b_prefix_node) : 
-                                           r_s2b_current_node);
+                     (s2_hit            ? (r_s2_current_node ^ r_s2_prefix_node) : 
+                                           r_s2_current_node);
     
     // 2. Prefix MUX 逻辑
     // Direct Reuse -> Use self_Val;Hit -> Use prefix_Val; Miss -> Use 0
@@ -288,12 +256,12 @@ module Dynamic_Scoreboard_CU #(
             r_s3_row_idx     <= 0;
             r_s3_bitplane_id <= 0;
         end else begin
-            r_s3_valid <= r_s2b_valid;
-            if (r_s2b_valid) begin
+            r_s3_valid <= r_s2_valid;
+            if (r_s2_valid) begin
                 r_s3_PPE_result  <= s2_PPE_result;
-                r_s3_node_id     <= r_s2b_current_node;
-                r_s3_row_idx     <= r_s2b_row_idx;
-                r_s3_bitplane_id <= r_s2b_bitplane_id;
+                r_s3_node_id     <= r_s2_current_node;
+                r_s3_row_idx     <= r_s2_row_idx;
+                r_s3_bitplane_id <= r_s2_bitplane_id;
             end
         end
     end
@@ -318,10 +286,9 @@ module Dynamic_Scoreboard_CU #(
         .res_rd_data(out_data)
     );
 
-     // =========================================================================
+    // =========================================================================
     // Batch & Matrix Done Indicator Logic (脉冲产生与自动归零逻辑)
     // =========================================================================
-    
     // 判定当前写入的是否是该批次/矩阵的"最后一个"数据
     assign s3_batch_last_data  = (r_s3_valid && (s3_batch_cnt == BATCH_SIZE - 1));
     assign s3_matrix_last_data = (r_s3_valid && (s3_matrix_cnt == TOTAL_PAYLOADS - 1));
@@ -360,5 +327,6 @@ module Dynamic_Scoreboard_CU #(
     // 提取移位寄存器的最高位，产生单拍脉冲 (Pulse)
     assign batch_done  = batch_done_shift[7];
     assign matrix_done = matrix_done_shift[7];
+
 
 endmodule

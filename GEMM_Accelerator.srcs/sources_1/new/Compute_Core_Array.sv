@@ -7,6 +7,7 @@ module Compute_Core_Array #(
     parameter B_VEC_LEN         = 4096,
     parameter OUT_WIDTH         = 32,
     parameter CU_NUMS           = 16,        // B_VEC_LEN / N
+    parameter CU_TYPE           = 0,         // 0:Static, 1:Dynamic, 2:SlidingWindow
     parameter A_PACKED_WIDTH    = 10 + T_WIDTH,
     parameter BATCH_NUMS        = N / T_WIDTH,
     parameter BATCH_SIZE        = M * 4,
@@ -38,7 +39,7 @@ module Compute_Core_Array #(
     input  wire                               start_dma,
     input  wire                               start_compute,
     input  wire [$clog2(BATCH_NUMS)-1:0]      current_k_offset,
-    output wire                               all_batch_done,
+    output wire                               all_batch_done_posedge,
     output wire                               all_matrix_done,
     output wire                               all_cu_ready,
 
@@ -64,29 +65,22 @@ module Compute_Core_Array #(
 
     reg [CU_NUMS-1:0] cu_batch_done_arr_flag;
     reg [CU_NUMS-1:0] cu_matrix_done_arr_flag;
-    reg [CU_NUMS-1:0] cu_cu_ready_arr_flag;
 
-    // reg               batch_soft_rst;
-    // reg               dma_wr_en_d1;
+    reg all_batch_done_d1;
+    wire all_batch_done;
+    assign all_batch_done_posedge = all_batch_done && !all_batch_done_d1;
 
-    // always @(posedge clk or negedge rst_n) begin
-    //     if (!rst_n) begin
-    //         batch_soft_rst <= 1'b0;
-    //         dma_wr_en_d1   <= 1'b0;
-    //     end else begin
-    //         dma_wr_en_d1   <= dma_wr_en;
-    //         batch_soft_rst <= dma_wr_en & ~dma_wr_en_d1; // dma_wr_en 从0变1时产生一个周期的软复位信号
-    //     end
-    // end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) all_batch_done_d1 <= 1'b0;
+        else        all_batch_done_d1 <= all_batch_done;
+    end
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             cu_batch_done_arr_flag  <= {CU_NUMS{1'b0}};
             cu_matrix_done_arr_flag <= {CU_NUMS{1'b0}};
-            cu_cu_ready_arr_flag    <= {CU_NUMS{1'b0}};
         end else if (start_dma) begin
             cu_batch_done_arr_flag  <= {CU_NUMS{1'b0}};
-            cu_cu_ready_arr_flag    <= {CU_NUMS{1'b0}};
         end else begin
             for (int i = 0; i < CU_NUMS; i = i + 1) begin
                 if (cu_batch_done_arr[i]) begin
@@ -95,16 +89,13 @@ module Compute_Core_Array #(
                 if (cu_matrix_done_arr[i]) begin
                     cu_matrix_done_arr_flag[i] <= 1'b1;
                 end
-                if (cu_cu_ready_arr[i]) begin
-                    cu_cu_ready_arr_flag[i]    <= 1'b1;
-                end
             end
         end
     end
 
     assign all_batch_done  = &cu_batch_done_arr_flag;   
     assign all_matrix_done = &cu_matrix_done_arr_flag;
-    assign all_cu_ready    = &cu_cu_ready_arr_flag;
+    assign all_cu_ready    = &cu_cu_ready_arr;
 
     Act_SI_Broadcast_Buffer #(
         .N(N), .B_VEC_LEN(B_VEC_LEN),
@@ -136,7 +127,8 @@ module Compute_Core_Array #(
         for (i = 0; i < CU_NUMS; i = i + 1) begin : CU_INST
             CU_Wrapper #(
                 .M(M), .N(N), .T_WIDTH(T_WIDTH), 
-                .BATCH_SIZE(BATCH_SIZE), .BATCH_NUMS(BATCH_NUMS)
+                .BATCH_SIZE(BATCH_SIZE), .BATCH_NUMS(BATCH_NUMS),
+                .CU_TYPE(CU_TYPE)
             ) u_cu_wrapper (
                 .clk(clk), .rst_n(rst_n),
                 .ping_pong_sel(ping_pong_sel), .dma_wr_en(dma_wr_en), .dma_wr_addr(dma_wr_addr),

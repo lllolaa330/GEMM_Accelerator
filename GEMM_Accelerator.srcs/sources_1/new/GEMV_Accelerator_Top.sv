@@ -8,7 +8,7 @@ module GEMV_Accelerator_Top #(
     parameter OUT_WIDTH         = 32,
     parameter RAM_LATENCY       = 3,
     parameter PIPE_STAGES       = 2,
-
+    parameter CU_TYPE           = 0,         // 0:Static, 1:Dynamic, 2:SlidingWindow
     parameter CU_NUMS        = B_VEC_LEN / N,   
     parameter BATCH_NUMS     = N / T_WIDTH,
     parameter BATCH_SIZE     = M * 4,
@@ -107,7 +107,7 @@ module GEMV_Accelerator_Top #(
     Compute_Core_Array #(
         .T_WIDTH(T_WIDTH), .M(M), .N(N), 
         .B_VEC_LEN(B_VEC_LEN), .CU_NUMS(CU_NUMS),
-        .OUT_WIDTH(OUT_WIDTH)
+        .OUT_WIDTH(OUT_WIDTH), .CU_TYPE(CU_TYPE)
     ) u_compute_array (
         .clk(clk), .rst_n(rst_n),
         
@@ -121,7 +121,7 @@ module GEMV_Accelerator_Top #(
         
         .start_dma(ctrl_start_dma),
         .start_compute(ctrl_start_compute), .current_k_offset(ctrl_compute_batch_idx),
-        .all_batch_done(compute_all_batch_done), 
+        .all_batch_done_posedge(compute_all_batch_done), 
         .all_matrix_done(compute_all_matrix_done),
         .all_cu_ready(compute_all_cu_ready),
         .start_accum(ctrl_start_accum),.accum_done(ctrl_accum_done),
