@@ -7,11 +7,11 @@ module tb_GEMV_Accelerator_Top;
     // =========================================================================
     parameter WEIGHT_TOTAL_ROW = 1024;                  // 完整的权重总行数
     parameter B_VEC_LEN        = 4096;                  // 完整的权重总列数 也是 B向量的长度
-    localparam GEMV_NUM        = 1;                     // 总共计算的GEMV次数（组成完整GEMM）
-    string  base_dir           = "C:/Users/lllolaa/Desktop/data_L38/data_L38"; 
-    string target_layer        = "k_proj";              // 目标层名称，用于构建文件路径
+    localparam GEMV_NUM        = 1;                    // 总共计算的GEMV次数（组成完整GEMM）
+    string    base_dir           = "C:/Users/lllolaa/Desktop/data_L38/data_L38"; 
+    string    target_layer        = "k_proj";           // 目标层名称，用于构建文件路径
     parameter CLK_MHZ          = 300;                   // 时钟频率 (MHz)
-    parameter CU_TYPE          = 2;                     // 0:Static, 1:Dynamic, 2:SlidingWindow，3:DSPBaseline
+    parameter CU_TYPE          = 3;                     // 0:Static, 1:Dynamic, 2:SlidingWindow，3:DSPBaseline
 
     parameter M              = 256;                     // 底层 CU 计算的行数 (每次处理256行)
     parameter N              = 256;                     // 底层 CU 计算的列数 (每次处理256列) 

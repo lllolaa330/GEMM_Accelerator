@@ -64,7 +64,9 @@ module Global_Controller #(
                          else next_state = WAIT_SYNC;
             WAIT_SYNC:   begin
                             if(batch_cnt == 0) begin
-                              if (dma_done) next_state = WAIT_CU_READY; // 第一个batch只等待DMA完成
+                              if (dma_done) next_state = WAIT_CU_READY;       // 第一个batch只等待DMA完成
+                            end else if(batch_cnt == BATCH_NUMS) begin
+                              if (all_batch_done) next_state = WAIT_CU_READY; // 最后一个batch只等待Compute完成
                             end else begin
                               if ((dma_done || dma_ready_flag) && (all_batch_done || cmp_ready_flag)) next_state = WAIT_CU_READY; // 后续batch需要等待DMA和Compute都完成
                             end
@@ -92,16 +94,19 @@ module Global_Controller #(
                     cmp_ready_flag <= 0;
                 end
                 SYNC_RUN: begin
-                    if(batch_cnt == 0) start_compute <= 0; // 第一个batch还不能启动计算
-                    else start_compute <= 1;               // 从第二个batch开始，计算和DMA同时启动
-                    start_dma <= 1;                        // 下一batch从URAM-BRAM
-                    ping_pong_sel <= ~ping_pong_sel; 
+                    if(batch_cnt == 0)  start_compute <= 0;          // 第一个batch还不能启动计算
+                    else                start_compute <= 1;          // 从第二个batch开始，计算和DMA同时启动
+                    if(batch_cnt == BATCH_NUMS) start_dma <= 0;      // 最后一个batch不启动DMA
+                    else                            start_dma <= 1;   
+                    ping_pong_sel  <= ~ping_pong_sel; 
                     dma_ready_flag <= 0; 
                     cmp_ready_flag <= 0;
                 end
                 WAIT_SYNC:  begin
                     if (batch_cnt == 0) begin
-                        if (dma_done) batch_cnt <= batch_cnt + 1;
+                        if (dma_done)       batch_cnt <= batch_cnt + 1;
+                    end else if (batch_cnt == BATCH_NUMS) begin
+                        if (all_batch_done) batch_cnt <= batch_cnt + 1;
                     end else begin
                         if (dma_done)       dma_ready_flag <= 1;
                         if (all_batch_done) cmp_ready_flag <= 1;
