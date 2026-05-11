@@ -1,0 +1,1 @@
+CU_TYPE,Layer,W_ROW,B_LEN,GEMV_NUM,Total_Errors,Act_Ext2BRAM,Act_BRAM2CU,SI_Ext2BRAM,SI_BRAM2CU,Compute,Out_BRAM2Ext,Total_Cycles

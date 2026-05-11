@@ -17,6 +17,7 @@ module GEMV_Accelerator_Top #(
 )(
     input  wire                               clk,
     input  wire                               rst_n,
+    input  wire                               rst_batch_n,
 
     // --- 主机控制接口 ---
     input  wire                               host_start,
@@ -110,6 +111,7 @@ module GEMV_Accelerator_Top #(
         .OUT_WIDTH(OUT_WIDTH), .CU_TYPE(CU_TYPE)
     ) u_compute_array (
         .clk(clk), .rst_n(rst_n),
+        .rst_batch_n(rst_batch_n),
         
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
         .start_broadcast_act(host_start_broadcast_act), .broadcast_done_act(broadcast_done_act),

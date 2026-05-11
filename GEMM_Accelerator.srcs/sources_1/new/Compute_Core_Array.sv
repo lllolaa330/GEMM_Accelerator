@@ -15,6 +15,7 @@ module Compute_Core_Array #(
 )(
     input  wire                               clk,
     input  wire                               rst_n,
+    input  wire                               rst_batch_n, 
 
     // 主机配置
     input  wire                               host_we_act,
@@ -101,7 +102,7 @@ module Compute_Core_Array #(
         .N(N), .B_VEC_LEN(B_VEC_LEN),
         .T_WIDTH(T_WIDTH), .B_DATA_WIDTH(8)
     ) u_broadcast_center (
-        .clk(clk), .rst_n(rst_n),
+        .clk(clk), .rst_n(rst_batch_n),
         .host_we_act(host_we_act), .host_addr_act(host_addr_act), .host_data_act(host_data_act),
         .host_we_si(host_we_si), .host_addr_si(host_addr_si), .host_data_si(host_data_si), 
         .start_broadcast_b(start_broadcast_act),

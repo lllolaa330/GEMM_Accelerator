@@ -18,13 +18,30 @@ module Hamming_Sorter_Static #(
     output wire                   soft_rst_batch_done,
     output wire                   accepting_first_data
 );
-
     localparam BATCH_ADDR = $clog2(BATCH_SIZE);
-    localparam WEIGHT_W = $clog2(T_WIDTH + 1);          
+    localparam WEIGHT_W = $clog2(T_WIDTH + 1); 
+    
+    // 1. 状态机
+    localparam COLLECT   = 2'd0;
+    localparam WAIT_PIPE = 2'd1; 
+    localparam DISPATCH  = 2'd2;
+    localparam DONE_GAP  = 2'd3;   
+
+    reg [1:0]  state;
+    reg [3:0]  read_ptr;
+    
+    // 位宽必须足够容纳 BATCH_SIZE ($clog2(1024) = 10)
+    reg [$clog2(BATCH_SIZE):0]  count; 
+    
+    reg [3:0]  gap_cnt;
+    reg [7:0]  batch_cnt;
+
+    reg batch_done_sig;
+    
     // 根据 T_WIDTH 自动计算权值寄存器需要的位宽
     // 例如 T_WIDTH=8 时，权重范围0~8，需要4bit；T_WIDTH=4时，权重范围0~4，需要3bit
 
-    // 1. 输入寄存处理
+    // 2. 输入寄存处理
     reg [DATA_WIDTH-1:0] in_data_reg;
     reg [WEIGHT_W-1:0]   weight_reg;
     reg                  in_valid_reg;
@@ -57,23 +74,6 @@ module Hamming_Sorter_Static #(
             end
         end
     end
-
-    // 2. 状态机
-    localparam COLLECT   = 2'd0;
-    localparam WAIT_PIPE = 2'd1; 
-    localparam DISPATCH  = 2'd2;
-    localparam DONE_GAP  = 2'd3;
-
-    reg [1:0]  state;
-    reg [3:0]  read_ptr;
-    
-    // 位宽必须足够容纳 BATCH_SIZE ($clog2(1024) = 10)
-    reg [$clog2(BATCH_SIZE):0]  count; 
-    
-    reg [3:0]  gap_cnt;
-    reg [7:0]  batch_cnt;
-
-    reg batch_done_sig;
 
     // 3. FIFO 实例化
     wire [DATA_WIDTH-1:0] fifo_dout[0:T_WIDTH];
